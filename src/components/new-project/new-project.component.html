@@ -1,0 +1,48 @@
+
+<div class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+  <h2 class="text-3xl font-bold mb-6 text-center text-teal-300">Criar Novo Projeto de Pintura</h2>
+  <form (ngSubmit)="generatePlan()" class="space-y-6">
+    <div>
+      <label for="projectName" class="block text-sm font-medium text-gray-300">Nome do Projeto</label>
+      <input id="projectName" name="projectName" type="text" [(ngModel)]="projectName" required
+             class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
+             placeholder="ex: Capitão dos Fuzileiros Espaciais">
+    </div>
+    <div>
+      <label for="projectSource" class="block text-sm font-medium text-gray-300">Fonte / Universo</label>
+      <input id="projectSource" name="projectSource" type="text" [(ngModel)]="projectSource" required
+             class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
+             placeholder="ex: Warhammer 40,000">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-300">Imagem de Referência</label>
+      <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
+        <div class="space-y-1 text-center">
+          <ng-container *ngIf="previewUrl(); else noPreview">
+            <img [src]="previewUrl()" alt="Image preview" class="mx-auto h-48 w-auto rounded-md object-cover">
+          </ng-container>
+          <ng-template #noPreview>
+            <svg class="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 4v.01M28 8L16 20m12-12v12m0 0h12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </ng-template>
+          <div class="flex text-sm text-gray-400">
+            <label for="file-upload" class="relative cursor-pointer bg-gray-700 rounded-md font-medium text-teal-400 hover:text-teal-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-800 focus-within:ring-teal-500 px-2">
+              <span>Enviar um arquivo</span>
+              <input id="file-upload" name="file-upload" type="file" class="sr-only" (change)="onFileSelected($event)" accept="image/*">
+            </label>
+            <p class="pl-1">ou arraste e solte</p>
+          </div>
+          <p class="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <button type="submit"
+              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 focus:ring-offset-gray-800 disabled:bg-gray-500 transition-colors"
+              [disabled]="!projectName() || !projectSource() || !referenceImage()">
+        Gerar Plano de Pintura
+      </button>
+    </div>
+  </form>
+</div>

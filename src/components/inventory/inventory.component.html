@@ -1,0 +1,166 @@
+
+<app-bulk-add-paints *ngIf="showBulkAddModal()" (close)="showBulkAddModal.set(false)">
+</app-bulk-add-paints>
+
+<div class="max-w-4xl mx-auto">
+  <h2 class="text-3xl font-bold mb-6 text-teal-300">Meu Inventário</h2>
+
+  <!-- Tabs -->
+  <div class="mb-6">
+    <div class="border-b border-gray-700">
+      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <button (click)="setActiveTab('paints')"
+                [class.border-teal-400]="activeTab() === 'paints'"
+                [class.text-teal-400]="activeTab() === 'paints'"
+                [class.text-gray-400]="activeTab() !== 'paints'"
+                [class.border-transparent]="activeTab() !== 'paints'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm hover:border-gray-500 hover:text-gray-300 transition-colors">
+          Tintas ({{ inventoryService.paints().length }})
+        </button>
+        <button (click)="setActiveTab('thinners')"
+                [class.border-teal-400]="activeTab() === 'thinners'"
+                [class.text-teal-400]="activeTab() === 'thinners'"
+                [class.text-gray-400]="activeTab() !== 'thinners'"
+                [class.border-transparent]="activeTab() !== 'thinners'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm hover:border-gray-500 hover:text-gray-300 transition-colors">
+          Diluentes ({{ inventoryService.thinners().length }})
+        </button>
+        <button (click)="setActiveTab('varnishes')"
+                [class.border-teal-400]="activeTab() === 'varnishes'"
+                [class.text-teal-400]="activeTab() === 'varnishes'"
+                [class.text-gray-400]="activeTab() !== 'varnishes'"
+                [class.border-transparent]="activeTab() !== 'varnishes'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm hover:border-gray-500 hover:text-gray-300 transition-colors">
+          Vernizes ({{ inventoryService.varnishes().length }})
+        </button>
+        <button (click)="setActiveTab('washes')"
+                [class.border-teal-400]="activeTab() === 'washes'"
+                [class.text-teal-400]="activeTab() === 'washes'"
+                [class.text-gray-400]="activeTab() !== 'washes'"
+                [class.border-transparent]="activeTab() !== 'washes'"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm hover:border-gray-500 hover:text-gray-300 transition-colors">
+          Washes ({{ inventoryService.washes().length }})
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div [ngSwitch]="activeTab()">
+    <div *ngSwitchCase="'paints'" class="space-y-4">
+        <div class="bg-gray-800 p-4 rounded-lg">
+          <div class="flex justify-end mb-4">
+             <button (click)="showBulkAddModal.set(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition-colors text-sm">
+                Cadastro Massivo
+              </button>
+          </div>
+          <form (ngSubmit)="addPaint()" class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+            <select [(ngModel)]="newPaint().type" name="type" title="Tipo de tinta" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500 h-10">
+              <option>Acrylic</option>
+              <option>Ink</option>
+              <option>Varnish</option>
+              <option>Other</option>
+            </select>
+            <input [(ngModel)]="newPaint().brand" name="brand" type="text" placeholder="Marca" list="brand-list" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500 h-10">
+            <datalist id="brand-list">
+              <option *ngFor="let brand of uniqueBrands()" [value]="brand"></option>
+            </datalist>
+            <input [(ngModel)]="newPaint().name" name="name" type="text" placeholder="Nome/Código da Cor" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500 h-10">
+            <div class="flex items-center gap-2">
+              <input [(ngModel)]="newPaint().hex" name="hex" type="color" class="h-10 w-10 p-0 border-none rounded-md bg-gray-700 cursor-pointer" title="Selecionar cor manualmente">
+              <button type="button" (click)="findHexCode()" [disabled]="isFetchingHex() || !newPaint().brand || !newPaint().name" class="w-full h-10 flex justify-center items-center bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold py-2 px-2 rounded-md transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed">
+                <ng-container *ngIf="isFetchingHex(); else buscarCor">
+                  <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </ng-container>
+                <ng-template #buscarCor>Buscar Cor</ng-template>
+              </button>
+            </div>
+            <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md transition-colors h-10">Adicionar</button>
+          </form>
+        </div>
+        <div *ngFor="let paint of inventoryService.paints()" class="bg-gray-800 p-3 rounded-lg flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-8 h-8 rounded-md border-2 border-gray-600" [style.background-color]="paint.hex"></div>
+            <div>
+              <p class="font-semibold">{{ paint.name }}</p>
+              <p class="text-sm text-gray-400">{{ paint.brand }} - {{ paint.type }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" (click)="updateHexCode(paint)" [disabled]="updatingPaintId() === paint.id" class="h-8 w-24 flex justify-center items-center bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold py-1 px-2 rounded-md transition-colors disabled:bg-gray-700 disabled:cursor-not-allowed">
+              <ng-container *ngIf="updatingPaintId() === paint.id; else atualizarCor">
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </ng-container>
+              <ng-template #atualizarCor>Atualizar Cor</ng-template>
+            </button>
+            <button (click)="inventoryService.removePaint(paint.id)" class="text-red-500 hover:text-red-400 text-2xl font-bold transition-colors">&times;</button>
+          </div>
+        </div>
+      </div>
+    <div *ngSwitchCase="'thinners'" class="space-y-4">
+      <div class="space-y-4">
+        <form (ngSubmit)="addThinner()" class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-800 p-4 rounded-lg">
+          <input [(ngModel)]="newThinner().brand" name="thinnerBrand" type="text" placeholder="Marca" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500">
+          <select [(ngModel)]="newThinner().composition" name="composition" title="Composição do diluente" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500">
+            <option>Original</option>
+            <option>Caseiro</option>
+          </select>
+          <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Adicionar</button>
+        </form>
+        <div *ngFor="let thinner of inventoryService.thinners()" class="bg-gray-800 p-3 rounded-lg flex items-center justify-between">
+          <div>
+            <p class="font-semibold">{{ thinner.brand }}</p>
+            <p class="text-sm text-gray-400">{{ thinner.composition }}</p>
+          </div>
+          <button (click)="inventoryService.removeThinner(thinner.id)" class="text-red-500 hover:text-red-400 text-2xl font-bold transition-colors">&times;</button>
+        </div>
+      </div>
+    </div>
+    <div *ngSwitchCase="'varnishes'" class="space-y-4">
+      <div class="space-y-4">
+        <form (ngSubmit)="addVarnish()" class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-800 p-4 rounded-lg">
+          <input [(ngModel)]="newVarnish().brand" name="varnishBrand" type="text" placeholder="Marca" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500">
+          <select [(ngModel)]="newVarnish().finish" name="finish" title="Acabamento do verniz" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500">
+            <option>Fosco</option>
+            <option>Acetinado</option>
+            <option>Brilhante</option>
+            <option>Vitral Brilhante</option>
+          </select>
+          <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Adicionar</button>
+        </form>
+        <div *ngFor="let varnish of inventoryService.varnishes()" class="bg-gray-800 p-3 rounded-lg flex items-center justify-between">
+          <div>
+            <p class="font-semibold">{{ varnish.brand }}</p>
+            <p class="text-sm text-gray-400">{{ varnish.finish }}</p>
+          </div>
+          <button (click)="inventoryService.removeVarnish(varnish.id)" class="text-red-500 hover:text-red-400 text-2xl font-bold transition-colors">&times;</button>
+        </div>
+      </div>
+    </div>
+    <div *ngSwitchCase="'washes'" class="space-y-4">
+      <div class="space-y-4">
+        <form (ngSubmit)="addWash()" class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-800 p-4 rounded-lg">
+          <input [(ngModel)]="newWash().brand" name="washBrand" type="text" placeholder="Marca (ex: Tamiya, Citadel)" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500">
+          <input [(ngModel)]="newWash().composition" name="washComposition" type="text" placeholder="Composição (ex: Esmalte, Caseiro)" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500">
+          <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md transition-colors">Adicionar</button>
+        </form>
+        <div *ngFor="let wash of inventoryService.washes()" class="bg-gray-800 p-3 rounded-lg flex items-center justify-between">
+          <div>
+            <p class="font-semibold">{{ wash.brand }}</p>
+            <p class="text-sm text-gray-400">{{ wash.composition }}</p>
+          </div>
+          <button (click)="inventoryService.removeWash(wash.id)" class="text-red-500 hover:text-red-400 text-2xl font-bold transition-colors">&times;</button>
+        </div>
+      </div>
+    </div>
+    <div *ngSwitchDefault>
+      <!-- default empty state -->
+    </div>
+  </div>
+</div>

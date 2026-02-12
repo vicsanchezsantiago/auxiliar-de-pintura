@@ -1,0 +1,5 @@
+{
+  "name": "Miniature Painting Assistant",
+  "description": "Um app com IA para ajudar na pintura de miniaturas. Ele analisa imagens de referência e seu inventário pessoal de tintas para gerar guias de pintura passo a passo detalhados, incluindo misturas de cores, diluições e técnicas.",
+  "requestFramePermissions": []
+}

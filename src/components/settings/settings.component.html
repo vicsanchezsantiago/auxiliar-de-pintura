@@ -1,0 +1,46 @@
+<div class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50" (click)="close.emit()">
+  <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
+    <h2 class="text-2xl font-bold mb-6 text-teal-300">Configurações de IA</h2>
+    
+    <div class="space-y-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-300">Provedor de IA</label>
+        <fieldset class="mt-2">
+          <legend class="sr-only">Notification method</legend>
+          <div class="space-y-2">
+            <div class="flex items-center">
+              <input id="provider-gemini" name="provider" type="radio" value="gemini" [(ngModel)]="currentSettings.provider" class="h-4 w-4 text-teal-600 border-gray-500 bg-gray-700 focus:ring-teal-500">
+              <label for="provider-gemini" class="ml-3 block text-sm font-medium text-gray-200">Google Gemini (Nuvem)</label>
+            </div>
+            <div class="flex items-center">
+              <input id="provider-local" name="provider" type="radio" value="local" [(ngModel)]="currentSettings.provider" class="h-4 w-4 text-teal-600 border-gray-500 bg-gray-700 focus:ring-teal-500">
+              <label for="provider-local" class="ml-3 block text-sm font-medium text-gray-200">Local (LM Studio / Compatível com OpenAI)</label>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+
+      <div *ngIf="currentSettings.provider === 'local'">
+        <label for="localEndpoint" class="block text-sm font-medium text-gray-300">Endpoint do Servidor Local</label>
+        <input id="localEndpoint" name="localEndpoint" type="url" [(ngModel)]="currentSettings.localEndpoint" required
+               class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
+               placeholder="http://localhost:1234/v1">
+        <p class="text-xs text-gray-500 mt-1">Ex: O endereço fornecido pelo LM Studio, geralmente terminando em /v1.</p>
+      </div>
+
+      <div class="text-sm text-gray-400 p-3 bg-gray-900/50 rounded-md">
+        <span *ngIf="currentSettings.provider === 'gemini'">Usando a API do Google Gemini. Sujeito aos limites de taxa do plano gratuito.</span>
+        <span *ngIf="currentSettings.provider !== 'gemini'">Usando um servidor local. Certifique-se de que seu servidor (ex: LM Studio) esteja em execução com um modelo compatível carregado.</span>
+      </div>
+
+    </div>
+
+    <div class="flex justify-end gap-4 pt-8">
+      <button (click)="close.emit()" class="px-4 py-2 text-sm font-medium rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Cancelar</button>
+      <button (click)="save()"
+              class="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 hover:bg-teal-700 text-white transition-colors">
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>

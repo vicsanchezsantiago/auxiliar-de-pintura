@@ -1,0 +1,62 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __decorateClass = (decorators, target, key, kind) => {
+  var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
+  for (var i = decorators.length - 1, decorator; i >= 0; i--)
+    if (decorator = decorators[i])
+      result = (kind ? decorator(target, key, result) : decorator(result)) || result;
+  if (kind && result) __defProp(target, key, result);
+  return result;
+};
+import { Component, ChangeDetectionStrategy, signal } from "/node_modules/.vite/deps/@angular_core.js?v=309884cf";
+import { CommonModule } from "/node_modules/.vite/deps/@angular_common.js?v=309884cf";
+import { FormsModule } from "/node_modules/.vite/deps/@angular_forms.js?v=309884cf";
+import { HomeComponent } from "/src/components/home/home.component.ts";
+import { InventoryComponent } from "/src/components/inventory/inventory.component.ts";
+import { NewProjectComponent } from "/src/components/new-project/new-project.component.ts";
+import { ProjectViewComponent } from "/src/components/project-view/project-view.component.ts";
+import { SettingsComponent } from "/src/components/settings/settings.component.ts";
+export let AppComponent = class {
+  constructor() {
+    this.currentView = signal("home");
+    this.activeProject = signal(null);
+    this.isLoading = signal(false);
+    this.loadingMessage = signal("");
+    this.showSettingsModal = signal(false);
+  }
+  navigateTo(view) {
+    this.currentView.set(view);
+  }
+  onProjectGenerated(projectPlan) {
+    this.activeProject.set(projectPlan);
+    this.navigateTo("projectView");
+    this.isLoading.set(false);
+  }
+  onGenerationStarted(message) {
+    this.isLoading.set(true);
+    this.loadingMessage.set(message);
+  }
+  onGenerationFailed(message = "Falha ao gerar o plano do projeto. Por favor, verifique sua chave de API e tente novamente.") {
+    this.isLoading.set(false);
+    alert(message);
+  }
+};
+AppComponent = __decorateClass([
+  Component({
+    selector: "app-root",
+    templateUrl: "./app.component.html",
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    standalone: true,
+    imports: [
+      CommonModule,
+      FormsModule,
+      HomeComponent,
+      InventoryComponent,
+      NewProjectComponent,
+      ProjectViewComponent,
+      SettingsComponent
+    ]
+  })
+], AppComponent);
+
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImFwcC5jb21wb25lbnQudHMiXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHsgQ29tcG9uZW50LCBDaGFuZ2VEZXRlY3Rpb25TdHJhdGVneSwgc2lnbmFsIH0gZnJvbSAnQGFuZ3VsYXIvY29yZSc7XG5pbXBvcnQgeyBDb21tb25Nb2R1bGUgfSBmcm9tICdAYW5ndWxhci9jb21tb24nO1xuaW1wb3J0IHsgRm9ybXNNb2R1bGUgfSBmcm9tICdAYW5ndWxhci9mb3Jtcyc7XG5pbXBvcnQgeyBIb21lQ29tcG9uZW50IH0gZnJvbSAnLi9jb21wb25lbnRzL2hvbWUvaG9tZS5jb21wb25lbnQnO1xuaW1wb3J0IHsgSW52ZW50b3J5Q29tcG9uZW50IH0gZnJvbSAnLi9jb21wb25lbnRzL2ludmVudG9yeS9pbnZlbnRvcnkuY29tcG9uZW50JztcbmltcG9ydCB7IE5ld1Byb2plY3RDb21wb25lbnQgfSBmcm9tICcuL2NvbXBvbmVudHMvbmV3LXByb2plY3QvbmV3LXByb2plY3QuY29tcG9uZW50JztcbmltcG9ydCB7IFByb2plY3RWaWV3Q29tcG9uZW50IH0gZnJvbSAnLi9jb21wb25lbnRzL3Byb2plY3Qtdmlldy9wcm9qZWN0LXZpZXcuY29tcG9uZW50JztcbmltcG9ydCB7IFByb2plY3RQbGFuIH0gZnJvbSAnLi90eXBlcy9pbnZlbnRvcnkudHlwZXMnO1xuaW1wb3J0IHsgU2V0dGluZ3NDb21wb25lbnQgfSBmcm9tICcuL2NvbXBvbmVudHMvc2V0dGluZ3Mvc2V0dGluZ3MuY29tcG9uZW50JztcblxudHlwZSBWaWV3ID0gJ2hvbWUnIHwgJ2ludmVudG9yeScgfCAnbmV3UHJvamVjdCcgfCAncHJvamVjdFZpZXcnO1xuXG5AQ29tcG9uZW50KHtcbiAgc2VsZWN0b3I6ICdhcHAtcm9vdCcsXG4gIHRlbXBsYXRlVXJsOiAnLi9hcHAuY29tcG9uZW50Lmh0bWwnLFxuICBjaGFuZ2VEZXRlY3Rpb246IENoYW5nZURldGVjdGlvblN0cmF0ZWd5Lk9uUHVzaCxcbiAgc3RhbmRhbG9uZTogdHJ1ZSxcbiAgaW1wb3J0czogW1xuICAgIENvbW1vbk1vZHVsZSxcbiAgICBGb3Jtc01vZHVsZSxcbiAgICBIb21lQ29tcG9uZW50LFxuICAgIEludmVudG9yeUNvbXBvbmVudCxcbiAgICBOZXdQcm9qZWN0Q29tcG9uZW50LFxuICAgIFByb2plY3RWaWV3Q29tcG9uZW50LFxuICAgIFNldHRpbmdzQ29tcG9uZW50LFxuICBdLFxufSlcbmV4cG9ydCBjbGFzcyBBcHBDb21wb25lbnQge1xuICBjdXJyZW50VmlldyA9IHNpZ25hbDxWaWV3PignaG9tZScpO1xuICBhY3RpdmVQcm9qZWN0ID0gc2lnbmFsPFByb2plY3RQbGFuIHwgbnVsbD4obnVsbCk7XG4gIGlzTG9hZGluZyA9IHNpZ25hbDxib29sZWFuPihmYWxzZSk7XG4gIGxvYWRpbmdNZXNzYWdlID0gc2lnbmFsPHN0cmluZz4oJycpO1xuICBzaG93U2V0dGluZ3NNb2RhbCA9IHNpZ25hbChmYWxzZSk7XG5cbiAgbmF2aWdhdGVUbyh2aWV3OiBWaWV3KSB7XG4gICAgdGhpcy5jdXJyZW50Vmlldy5zZXQodmlldyk7XG4gIH1cblxuICBvblByb2plY3RHZW5lcmF0ZWQocHJvamVjdFBsYW46IFByb2plY3RQbGFuKSB7XG4gICAgdGhpcy5hY3RpdmVQcm9qZWN0LnNldChwcm9qZWN0UGxhbik7XG4gICAgdGhpcy5uYXZpZ2F0ZVRvKCdwcm9qZWN0VmlldycpO1xuICAgIHRoaXMuaXNMb2FkaW5nLnNldChmYWxzZSk7XG4gIH1cblxuICBvbkdlbmVyYXRpb25TdGFydGVkKG1lc3NhZ2U6IHN0cmluZykge1xuICAgIHRoaXMuaXNMb2FkaW5nLnNldCh0cnVlKTtcbiAgICB0aGlzLmxvYWRpbmdNZXNzYWdlLnNldChtZXNzYWdlKTtcbiAgfVxuICBcbiAgb25HZW5lcmF0aW9uRmFpbGVkKG1lc3NhZ2U6IHN0cmluZyA9ICdGYWxoYSBhbyBnZXJhciBvIHBsYW5vIGRvIHByb2pldG8uIFBvciBmYXZvciwgdmVyaWZpcXVlIHN1YSBjaGF2ZSBkZSBBUEkgZSB0ZW50ZSBub3ZhbWVudGUuJykge1xuICAgIHRoaXMuaXNMb2FkaW5nLnNldChmYWxzZSk7XG4gICAgYWxlcnQobWVzc2FnZSk7XG4gIH1cbn0iXSwibWFwcGluZ3MiOiI7Ozs7Ozs7Ozs7QUFBQSxTQUFTLFdBQVcseUJBQXlCLGNBQWM7QUFDM0QsU0FBUyxvQkFBb0I7QUFDN0IsU0FBUyxtQkFBbUI7QUFDNUIsU0FBUyxxQkFBcUI7QUFDOUIsU0FBUywwQkFBMEI7QUFDbkMsU0FBUywyQkFBMkI7QUFDcEMsU0FBUyw0QkFBNEI7QUFFckMsU0FBUyx5QkFBeUI7QUFtQjNCLFdBQU0sZUFBTixNQUFtQjtBQUFBLEVBQW5CO0FBQ0wsdUJBQWMsT0FBYSxNQUFNO0FBQ2pDLHlCQUFnQixPQUEyQixJQUFJO0FBQy9DLHFCQUFZLE9BQWdCLEtBQUs7QUFDakMsMEJBQWlCLE9BQWUsRUFBRTtBQUNsQyw2QkFBb0IsT0FBTyxLQUFLO0FBQUE7QUFBQSxFQUVoQyxXQUFXLE1BQVk7QUFDckIsU0FBSyxZQUFZLElBQUksSUFBSTtBQUFBLEVBQzNCO0FBQUEsRUFFQSxtQkFBbUIsYUFBMEI7QUFDM0MsU0FBSyxjQUFjLElBQUksV0FBVztBQUNsQyxTQUFLLFdBQVcsYUFBYTtBQUM3QixTQUFLLFVBQVUsSUFBSSxLQUFLO0FBQUEsRUFDMUI7QUFBQSxFQUVBLG9CQUFvQixTQUFpQjtBQUNuQyxTQUFLLFVBQVUsSUFBSSxJQUFJO0FBQ3ZCLFNBQUssZUFBZSxJQUFJLE9BQU87QUFBQSxFQUNqQztBQUFBLEVBRUEsbUJBQW1CLFVBQWtCLCtGQUErRjtBQUNsSSxTQUFLLFVBQVUsSUFBSSxLQUFLO0FBQ3hCLFVBQU0sT0FBTztBQUFBLEVBQ2Y7QUFDRjtBQTFCYSxlQUFOO0FBQUEsRUFmTixVQUFVO0FBQUEsSUFDVCxVQUFVO0FBQUEsSUFDVixhQUFhO0FBQUEsSUFDYixpQkFBaUIsd0JBQXdCO0FBQUEsSUFDekMsWUFBWTtBQUFBLElBQ1osU0FBUztBQUFBLE1BQ1A7QUFBQSxNQUNBO0FBQUEsTUFDQTtBQUFBLE1BQ0E7QUFBQSxNQUNBO0FBQUEsTUFDQTtBQUFBLE1BQ0E7QUFBQSxJQUNGO0FBQUEsRUFDRixDQUFDO0FBQUEsR0FDWTsiLCJuYW1lcyI6W119

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Miniature Painting Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <style>
+    /* Loading state for better UX */
+    .loading-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #111827;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(31, 41, 55, 0.5);
+      border-top-color: #14b8a6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      color: #2dd4bf;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 antialiased">
+  <app-root>
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+      <p class="loading-text">CARREGANDO...</p>
+    </div>
+  </app-root>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

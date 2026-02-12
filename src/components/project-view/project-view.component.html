@@ -1,0 +1,88 @@
+<div *ngIf="projectPlan as plan" class="max-w-4xl mx-auto print-bg-white print-text-black">
+  <div class="flex justify-between items-start mb-8">
+    <div>
+      <h1 class="text-4xl font-bold text-teal-300 print-text-black">{{ plan.projectName }}</h1>
+      <p class="text-lg text-gray-400 print-text-black">{{ plan.source }}</p>
+    </div>
+    <button (click)="printPlan()" class="no-print bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md flex items-center gap-2 transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
+      </svg>
+      Imprimir / Salvar PDF
+    </button>
+  </div>
+
+  <section *ngIf="plan.warnings && plan.warnings.length > 0" class="mb-10 bg-yellow-900/50 border-l-4 border-yellow-400 p-4 rounded-r-lg no-print">
+    <h2 class="text-xl font-semibold text-yellow-300 mb-2">Avisos de Inventário</h2>
+    <ul class="list-disc list-inside space-y-1 text-yellow-200">
+      <li *ngFor="let warning of plan.warnings">{{ warning }}</li>
+    </ul>
+  </section>
+
+  <!-- Paints To Use -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-semibold border-b-2 border-teal-500 pb-2 mb-4 print-text-black">Tintas Necessárias</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div *ngFor="let paint of plan.paintsToUse" class="bg-gray-800 p-3 rounded-lg flex items-center gap-3 print-border print-bg-white">
+        <div class="w-8 h-8 rounded-full border-2 border-gray-600 flex-shrink-0" [style.background-color]="paint.hex"></div>
+        <div>
+          <p class="font-semibold text-sm print-text-black">{{ paint.name }}</p>
+          <p class="text-xs text-gray-400 print-text-black">{{ paint.brand }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Painting Steps -->
+  <section class="mb-10">
+    <h2 class="text-2xl font-semibold border-b-2 border-teal-500 pb-2 mb-4 print-text-black">Passos de Pintura</h2>
+    <div class="space-y-6">
+      <div *ngFor="let step of plan.steps" class="bg-gray-800 rounded-lg p-5 flex flex-col md:flex-row gap-5 print-border print-bg-white">
+        <div class="flex-shrink-0 w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-xl font-bold text-teal-300 print-text-black">
+          {{ step.stepNumber }}
+        </div>
+        <div class="flex-grow">
+          <h3 class="font-bold text-lg text-white mb-2 print-text-black">{{ step.description }}</h3>
+
+          <div *ngIf="step.imageRegions && step.imageRegions.length > 0" class="mt-4 mb-4 no-print">
+            <div class="relative w-full bg-gray-900 rounded-md overflow-hidden border border-gray-700">
+              <ng-container *ngFor="let region of step.imageRegions; let i = index">
+                <div [hidden]="(carouselIndices()[step.stepNumber] || 0) !== i">
+                  <canvas #regionCanvas [attr.data-step]="step.stepNumber" [attr.data-region]="i" class="w-full h-auto"></canvas>
+                </div>
+              </ng-container>
+            </div>
+            <div *ngIf="step.imageRegions.length > 1" class="flex items-center justify-center gap-4 mt-2">
+              <button (click)="prevImage(step.stepNumber, step.imageRegions.length)" class="px-3 py-1 bg-gray-600 rounded-full hover:bg-gray-500 transition-colors">&lt;</button>
+              <span class="text-sm font-mono">{{ (carouselIndices()[step.stepNumber] || 0) + 1 }} / {{ step.imageRegions.length }}</span>
+              <button (click)="nextImage(step.stepNumber, step.imageRegions.length)" class="px-3 py-1 bg-gray-600 rounded-full hover:bg-gray-500 transition-colors">&gt;</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <p><strong class="text-gray-400 print-text-black">Tinta:</strong> {{ step.paintName }}</p>
+            <p><strong class="text-gray-400 print-text-black">Ferramenta:</strong> {{ step.tool }} {{ step.brushSize ? '(' + step.brushSize + ')' : '' }}</p>
+            <p class="col-span-full"><strong class="text-gray-400 print-text-black">Diluição:</strong> {{ step.dilution }}</p>
+            <p *ngIf="step.paintMix" class="col-span-full"><strong class="text-gray-400 print-text-black">Mistura:</strong> {{ step.paintMix }}</p>
+          </div>
+          <p class="mt-3 text-gray-300 bg-gray-700/50 p-3 rounded-md italic print-bg-white print-text-black print-border">
+            <strong>Dica:</strong> {{ step.tips }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fixation Tips -->
+  <section>
+    <h2 class="text-2xl font-semibold border-b-2 border-teal-500 pb-2 mb-4 print-text-black">Dicas de Fixação</h2>
+    <ul class="list-disc list-inside space-y-2 bg-gray-800 p-4 rounded-lg print-bg-white print-border">
+      <li *ngFor="let tip of plan.fixationTips" class="print-text-black">{{ tip }}</li>
+    </ul>
+  </section>
+</div>
+
+<div *ngIf="!projectPlan()" class="text-center">
+  <h2 class="text-2xl font-bold">Nenhum projeto carregado.</h2>
+  <p class="mt-2 text-gray-400">Vá para "Novo Projeto" para gerar um plano de pintura.</p>
+</div>
