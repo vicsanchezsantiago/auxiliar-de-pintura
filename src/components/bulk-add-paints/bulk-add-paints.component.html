@@ -1,45 +1,64 @@
-
 <div class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50" (click)="cancel()">
   <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
     <h2 class="text-2xl font-bold mb-6 text-teal-300">Cadastro Massivo de Itens</h2>
     
-    <div *ngIf="isProcessing(); else notProcessing" class="text-center">
-      <svg class="animate-spin h-10 w-10 text-teal-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <!-- Estado de Sucesso -->
+    <div *ngIf="isSuccess()" class="text-center py-8">
+      <div class="text-6xl mb-4">✅</div>
+      <h3 class="text-xl font-bold text-teal-300 mb-2">Cadastro Concluído!</h3>
+      <p class="text-gray-300 mb-6">{{ savedItemsCount() }} itens foram adicionados ao seu inventário.</p>
+      <button (click)="confirmAndClose()" 
+              class="px-6 py-3 text-sm font-medium rounded-md bg-teal-600 hover:bg-teal-700 text-white transition-colors">
+        Confirmar e Fechar
+      </button>
+    </div>
+    
+    <!-- Estado de Processamento -->
+    <div *ngIf="isProcessing() && !isSuccess()" class="text-center py-8">
+      <svg class="animate-spin h-12 w-12 text-teal-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
       </svg>
-      <p class="mt-4 text-lg">Processando itens...</p>
-      <p class="text-gray-400">{{ processedCount() }} / {{ totalCount() }}</p>
-      <p class="text-gray-500 text-sm mt-2 h-4">{{ currentItem() }}</p>
-    </div>
-    <ng-template #notProcessing>
-      <div class="space-y-4">
-        <div>
-          <label for="brandName" class="block text-sm font-medium text-gray-300">Marca (opcional, será aplicada a todas as tintas)</label>
-          <input id="brandName" type="text"
-                 [value]="brandName()"
-                 (input)="brandName.set($event.target.value)"
-                 class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
-                 placeholder="Ex: Tamiya, Vallejo, Citadel">
-        </div>
-        <div>
-          <label for="inventoryList" class="block text-sm font-medium text-gray-300">Lista de Itens (um por linha)</label>
-          <textarea id="inventoryList" name="inventoryList" rows="10"
-                    [value]="inventoryList()"
-                    (input)="inventoryList.set($event.target.value)"
-                    class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
-                    placeholder="ACRYLIC COLOR 259-FS12246 ORANGE-20ML UND&#10;ACRYLIC COLOR 164 BLACK GLOSS 20ML UND&#10;VERNIZ VITRAL BRILHANTE-37ML&#10;Acrylic Ink 25ml 40 Azul Vibrante - und"></textarea>
-          <p class="text-xs text-gray-500 mt-1">Insira um produto por linha. A IA irá categorizar, identificar tipo (Acrylic/Ink), definir a cor hex, e separar por marca.</p>
-        </div>
-        <div class="flex justify-end gap-4 pt-4">
-          <button (click)="cancel()" class="px-4 py-2 text-sm font-medium rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Cancelar</button>
-          <button (click)="processBulkList()" 
-                  [disabled]="!inventoryList()"
-                  class="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-            Adicionar Itens
-          </button>
-        </div>
+      <p class="mt-4 text-lg font-medium">Processando itens...</p>
+      <div class="mt-2 bg-gray-700 rounded-full h-2 w-48 mx-auto overflow-hidden">
+        <div class="bg-teal-500 h-full transition-all duration-300" 
+             [style.width.%]="totalCount() > 0 ? (processedCount() / totalCount()) * 100 : 0"></div>
       </div>
-    </ng-template>
+      <p class="text-teal-400 font-mono mt-2">{{ processedCount() }} / {{ totalCount() }}</p>
+      <p class="text-gray-400 text-sm mt-2 min-h-[20px] px-4">{{ currentItem() }}</p>
+      <p class="text-yellow-500/70 text-xs mt-4">⏳ IA local é mais lenta. Para melhor performance, considere usar a API Gemini.</p>
+    </div>
+    
+    <!-- Formulário -->
+    <div *ngIf="!isProcessing() && !isSuccess()" class="space-y-4">
+      <div *ngIf="errorMessage()" class="bg-red-900/30 border border-red-700 rounded-md p-3 text-red-300 text-sm">
+        {{ errorMessage() }}
+      </div>
+      <div>
+        <label for="brandName" class="block text-sm font-medium text-gray-300">Marca (obrigatória)</label>
+        <input id="brandName" type="text"
+               [value]="brandName()"
+               (input)="brandName.set($event.target.value)"
+               class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
+               placeholder="Ex: Talento, Tamiya, Vallejo, Citadel">
+      </div>
+      <div>
+        <label for="inventoryList" class="block text-sm font-medium text-gray-300">Lista de Itens (cada linha começando com -)</label>
+        <textarea id="inventoryList" name="inventoryList" rows="10"
+                  [value]="inventoryList()"
+                  (input)="inventoryList.set($event.target.value)"
+                  class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500 font-mono text-sm"
+                  placeholder="-ACRYLIC COLOR 259 ORANGE 20ML&#10;-ACRYLIC COLOR 164 BLACK GLOSS 20ML&#10;-VERNIZ VITRAL BRILHANTE 37ML&#10;-Acrylic Ink Azul Vibrante 25ml&#10;-WASH Nuln Oil&#10;-Diluente Acrílico 100ml"></textarea>
+        <p class="text-xs text-gray-500 mt-1">Cada linha deve começar com <span class="text-teal-400">-</span>. A IA identificará: tintas, vernizes, diluentes e washes.</p>
+      </div>
+      <div class="flex justify-end gap-4 pt-4">
+        <button (click)="cancel()" class="px-4 py-2 text-sm font-medium rounded-md bg-gray-600 hover:bg-gray-500 transition-colors">Cancelar</button>
+        <button (click)="processBulkList()" 
+                [disabled]="!inventoryList() || !brandName()"
+                class="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+          Processar Lista
+        </button>
+      </div>
+    </div>
   </div>
 </div>

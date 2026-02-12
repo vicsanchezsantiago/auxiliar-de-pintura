@@ -1,5 +1,5 @@
 
-import { Component, ChangeDetectionStrategy, inject, signal, Output, EventEmitter } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, Output, EventEmitter, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InventoryService } from '../../services/inventory.service';
@@ -15,15 +15,20 @@ import { GeminiService } from '../../services/gemini.service';
 export class BulkAddPaintsComponent {
   inventoryService = inject(InventoryService);
   geminiService = inject(GeminiService);
+  private cdr = inject(ChangeDetectorRef);
+  private ngZone = inject(NgZone);
 
   @Output() close = new EventEmitter<void>();
 
   inventoryList = signal('');
   brandName = signal('');
   isProcessing = signal(false);
+  isSuccess = signal(false);
   processedCount = signal(0);
   totalCount = signal(0);
   currentItem = signal('');
+  errorMessage = signal('');
+  savedItemsCount = signal(0);
 
   async processBulkList() {
     if (!this.inventoryList()) {
@@ -32,51 +37,81 @@ export class BulkAddPaintsComponent {
     }
 
     this.isProcessing.set(true);
-    this.currentItem.set('Analisando a lista com IA...');
+    this.errorMessage.set('');
+    this.currentItem.set('Iniciando análise...');
+    this.cdr.markForCheck();
+
+    // Contar linhas válidas
+    const lines = this.inventoryList().split('\n').map(l => l.trim()).filter(l => l && l.startsWith('-'));
+    this.totalCount.set(lines.length);
+    this.processedCount.set(0);
+    this.cdr.markForCheck();
 
     try {
+      // Callback para atualizar progresso (dentro da NgZone para Change Detection)
+      const onProgress = (current: number, total: number, item: string) => {
+        this.ngZone.run(() => {
+          this.processedCount.set(current);
+          this.totalCount.set(total);
+          this.currentItem.set(item);
+          this.cdr.markForCheck();
+        });
+      };
+
       const parsedInventory = await this.geminiService.parseBulkInventory(
         this.inventoryList(),
-        this.brandName()
+        this.brandName(),
+        onProgress
       );
 
       if (!parsedInventory) {
-        alert('A IA retornou uma resposta vazia. Verifique o formato da sua lista ou tente novamente.');
+        this.errorMessage.set('A IA não conseguiu processar a lista. Tente com menos itens ou verifique o formato.');
         this.isProcessing.set(false);
+        this.cdr.markForCheck();
         return;
       }
       
       const { paints = [], thinners = [], varnishes = [], washes = [] } = parsedInventory;
-      this.totalCount.set(paints.length + thinners.length + varnishes.length + washes.length);
-      this.processedCount.set(0);
+      const totalItems = paints.length + thinners.length + varnishes.length + washes.length;
+      
+      this.currentItem.set('Salvando itens no inventário...');
+      this.cdr.markForCheck();
 
+      let savedCount = 0;
       for (const paint of paints) {
-        this.currentItem.set(`Adicionando tinta: ${paint.brand} ${paint.name}`);
         this.inventoryService.addPaint(paint);
-        this.processedCount.update(n => n + 1);
+        savedCount++;
+        this.currentItem.set(`Salvo: ${paint.name}`);
+        this.cdr.markForCheck();
       }
       for (const thinner of thinners) {
-        this.currentItem.set(`Adicionando diluente: ${thinner.brand}`);
         this.inventoryService.addThinner(thinner);
-        this.processedCount.update(n => n + 1);
+        savedCount++;
       }
       for (const varnish of varnishes) {
-        this.currentItem.set(`Adicionando verniz: ${varnish.brand}`);
         this.inventoryService.addVarnish(varnish);
-        this.processedCount.update(n => n + 1);
+        savedCount++;
       }
       for (const wash of washes) {
-        this.currentItem.set(`Adicionando wash: ${wash.brand} ${wash.composition}`);
         this.inventoryService.addWash(wash);
-        this.processedCount.update(n => n + 1);
+        savedCount++;
       }
       
+      this.currentItem.set(`✓ ${savedCount} itens adicionados com sucesso!`);
+      this.savedItemsCount.set(savedCount);
       this.isProcessing.set(false);
-      this.close.emit();
+      this.isSuccess.set(true);
+      this.cdr.markForCheck();
     } catch (error: any) {
-      alert(error.message);
+      console.error('Erro no cadastro massivo:', error);
+      this.errorMessage.set(error.message || 'Erro ao processar lista');
       this.isProcessing.set(false);
+      this.cdr.markForCheck();
     }
+  }
+
+  confirmAndClose() {
+    this.close.emit();
   }
 
   cancel() {

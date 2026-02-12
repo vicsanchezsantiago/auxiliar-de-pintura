@@ -4,13 +4,15 @@
   <form (ngSubmit)="generatePlan()" class="space-y-6">
     <div>
       <label for="projectName" class="block text-sm font-medium text-gray-300">Nome do Projeto</label>
-      <input id="projectName" name="projectName" type="text" [(ngModel)]="projectName" required
+      <input id="projectName" name="projectName" type="text" 
+             [ngModel]="projectName()" (ngModelChange)="projectName.set($event)" required
              class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
              placeholder="ex: Capitão dos Fuzileiros Espaciais">
     </div>
     <div>
       <label for="projectSource" class="block text-sm font-medium text-gray-300">Fonte / Universo</label>
-      <input id="projectSource" name="projectSource" type="text" [(ngModel)]="projectSource" required
+      <input id="projectSource" name="projectSource" type="text" 
+             [ngModel]="projectSource()" (ngModelChange)="projectSource.set($event)" required
              class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
              placeholder="ex: Warhammer 40,000">
     </div>

@@ -10,19 +10,49 @@ export interface Paint {
 export interface Thinner {
   id: string;
   brand: string;
+  name: string;
   composition: 'Original' | 'Caseiro';
 }
 
 export interface Varnish {
   id: string;
   brand: string;
+  name: string;
   finish: 'Brilhante' | 'Acetinado' | 'Fosco' | 'Vitral Brilhante';
 }
 
 export interface Wash {
   id: string;
   brand: string;
+  name: string;
+  hex: string;
   composition: string;
+}
+
+// Novos tipos de equipamentos
+export interface Brush {
+  id: string;
+  brand: string;
+  series: string;
+  size: string;
+  type: 'Redondo' | 'Chato' | 'Angular' | 'Leque' | 'Detalhe' | 'Drybrush' | 'Outro';
+}
+
+export interface Airbrush {
+  id: string;
+  brand: string;
+  model: string;
+  nozzleSize: string; // Ex: 0.2mm, 0.3mm, 0.5mm
+  type: 'Gravidade' | 'Sucção' | 'Lateral';
+  psi?: string;
+}
+
+export interface Tool {
+  id: string;
+  name: string;
+  brand?: string;
+  category: 'Corte' | 'Modelagem' | 'Medição' | 'Limpeza' | 'Suporte' | 'Outro';
+  description?: string;
 }
 
 export interface FullInventory {
@@ -30,6 +60,9 @@ export interface FullInventory {
   thinners: Thinner[];
   varnishes: Varnish[];
   washes: Wash[];
+  brushes: Brush[];
+  airbrushes: Airbrush[];
+  tools: Tool[];
 }
 
 export interface ProjectStep {

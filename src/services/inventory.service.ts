@@ -1,6 +1,6 @@
 
 import { Injectable, signal, computed } from '@angular/core';
-import { Paint, Thinner, Varnish, FullInventory, Wash } from '../types/inventory.types';
+import { Paint, Thinner, Varnish, FullInventory, Wash, Brush, Airbrush, Tool } from '../types/inventory.types';
 
 @Injectable({
   providedIn: 'root',
@@ -12,12 +12,18 @@ export class InventoryService {
   thinners = signal<Thinner[]>([]);
   varnishes = signal<Varnish[]>([]);
   washes = signal<Wash[]>([]);
+  brushes = signal<Brush[]>([]);
+  airbrushes = signal<Airbrush[]>([]);
+  tools = signal<Tool[]>([]);
 
   fullInventory = computed<FullInventory>(() => ({
     paints: this.paints(),
     thinners: this.thinners(),
     varnishes: this.varnishes(),
-    washes: this.washes()
+    washes: this.washes(),
+    brushes: this.brushes(),
+    airbrushes: this.airbrushes(),
+    tools: this.tools()
   }));
 
   constructor() {
@@ -29,12 +35,7 @@ export class InventoryService {
   }
 
   private saveInventory(): void {
-    const inventory: FullInventory = {
-      paints: this.paints(),
-      thinners: this.thinners(),
-      varnishes: this.varnishes(),
-      washes: this.washes(),
-    };
+    const inventory: FullInventory = this.fullInventory();
     localStorage.setItem(this.INVENTORY_KEY, JSON.stringify(inventory));
   }
 
@@ -46,9 +47,13 @@ export class InventoryService {
       this.thinners.set(inventory.thinners || []);
       this.varnishes.set(inventory.varnishes || []);
       this.washes.set(inventory.washes || []);
+      this.brushes.set(inventory.brushes || []);
+      this.airbrushes.set(inventory.airbrushes || []);
+      this.tools.set(inventory.tools || []);
     }
   }
 
+  // PAINTS
   addPaint(paint: Omit<Paint, 'id'>): void {
     const existing = this.paints().find(p =>
       p.brand.trim().toLowerCase() === paint.brand.trim().toLowerCase() &&
@@ -78,15 +83,10 @@ export class InventoryService {
     this.saveInventory();
   }
 
+  // THINNERS
   addThinner(thinner: Omit<Thinner, 'id'>): void {
-    const existing = this.thinners().find(t =>
-      t.brand.trim().toLowerCase() === thinner.brand.trim().toLowerCase() &&
-      t.composition.trim().toLowerCase() === thinner.composition.trim().toLowerCase()
-    );
-    if (!existing) {
-      this.thinners.update(thinners => [...thinners, { ...thinner, id: this.generateId() }]);
-      this.saveInventory();
-    }
+    this.thinners.update(thinners => [...thinners, { ...thinner, id: this.generateId() }]);
+    this.saveInventory();
   }
 
   removeThinner(id: string): void {
@@ -94,15 +94,10 @@ export class InventoryService {
     this.saveInventory();
   }
 
+  // VARNISHES
   addVarnish(varnish: Omit<Varnish, 'id'>): void {
-    const existing = this.varnishes().find(v =>
-      v.brand.trim().toLowerCase() === varnish.brand.trim().toLowerCase() &&
-      v.finish.trim().toLowerCase() === varnish.finish.trim().toLowerCase()
-    );
-    if (!existing) {
-      this.varnishes.update(varnishes => [...varnishes, { ...varnish, id: this.generateId() }]);
-      this.saveInventory();
-    }
+    this.varnishes.update(varnishes => [...varnishes, { ...varnish, id: this.generateId() }]);
+    this.saveInventory();
   }
 
   removeVarnish(id: string): void {
@@ -110,19 +105,47 @@ export class InventoryService {
     this.saveInventory();
   }
 
+  // WASHES
   addWash(wash: Omit<Wash, 'id'>): void {
-    const existing = this.washes().find(w =>
-      w.brand.trim().toLowerCase() === wash.brand.trim().toLowerCase() &&
-      w.composition.trim().toLowerCase() === wash.composition.trim().toLowerCase()
-    );
-    if (!existing) {
-      this.washes.update(washes => [...washes, { ...wash, id: this.generateId() }]);
-      this.saveInventory();
-    }
+    this.washes.update(washes => [...washes, { ...wash, id: this.generateId() }]);
+    this.saveInventory();
   }
 
   removeWash(id: string): void {
     this.washes.update(washes => washes.filter(w => w.id !== id));
+    this.saveInventory();
+  }
+
+  // BRUSHES
+  addBrush(brush: Omit<Brush, 'id'>): void {
+    this.brushes.update(brushes => [...brushes, { ...brush, id: this.generateId() }]);
+    this.saveInventory();
+  }
+
+  removeBrush(id: string): void {
+    this.brushes.update(brushes => brushes.filter(b => b.id !== id));
+    this.saveInventory();
+  }
+
+  // AIRBRUSHES
+  addAirbrush(airbrush: Omit<Airbrush, 'id'>): void {
+    this.airbrushes.update(airbrushes => [...airbrushes, { ...airbrush, id: this.generateId() }]);
+    this.saveInventory();
+  }
+
+  removeAirbrush(id: string): void {
+    this.airbrushes.update(airbrushes => airbrushes.filter(a => a.id !== id));
+    this.saveInventory();
+  }
+
+  // TOOLS
+  addTool(tool: Omit<Tool, 'id'>): void {
+    this.tools.update(tools => [...tools, { ...tool, id: this.generateId() }]);
+    this.saveInventory();
+  }
+
+  removeTool(id: string): void {
+    this.tools.update(tools => tools.filter(t => t.id !== id));
     this.saveInventory();
   }
 }
