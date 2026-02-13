@@ -1,5 +1,5 @@
-<div class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50" (click)="close.emit()">
-  <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-lg mx-4" (click)="$event.stopPropagation()">
+<div class="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50 overflow-y-auto py-4" (click)="close.emit()">
+  <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-2xl mx-4 my-auto" (click)="$event.stopPropagation()">
     <h2 class="text-2xl font-bold mb-6 text-teal-300">Configurações de IA</h2>
     
     <div class="space-y-6">
@@ -26,11 +26,50 @@
                class="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-teal-500 focus:border-teal-500"
                placeholder="http://localhost:1234/v1">
         <p class="text-xs text-gray-500 mt-1">Ex: O endereço fornecido pelo LM Studio, geralmente terminando em /v1.</p>
+        
+        <!-- Modelos Recomendados -->
+        <div class="mt-4 p-4 bg-gray-900/70 rounded-lg border border-gray-700">
+          <h3 class="text-sm font-semibold text-teal-400 mb-3">🎨 Modelos Recomendados para Análise de Imagens</h3>
+          
+          <div class="space-y-3 text-xs">
+            <div class="p-2 bg-green-900/30 rounded border border-green-700/50">
+              <span class="font-bold text-green-400">⭐ Melhor Escolha:</span>
+              <p class="text-gray-300 mt-1"><strong>Qwen2-VL-7B-Instruct</strong> - Excelente análise de imagem + seguimento de instruções</p>
+              <p class="text-gray-400">VRAM: ~16GB | Contexto: 32K tokens</p>
+            </div>
+            
+            <div class="p-2 bg-blue-900/30 rounded border border-blue-700/50">
+              <span class="font-bold text-blue-400">💡 Alternativas Boas:</span>
+              <ul class="text-gray-300 mt-1 space-y-1 ml-2">
+                <li>• <strong>LLaVA-v1.6-Mistral-7B</strong> - Bom equilíbrio (VRAM: ~14GB)</li>
+                <li>• <strong>MiniCPM-V-2.6</strong> - Leve e eficiente (VRAM: ~8GB)</li>
+                <li>• <strong>Phi-3.5-Vision-Instruct</strong> - Microsoft, compacto (VRAM: ~8GB)</li>
+              </ul>
+            </div>
+            
+            <div class="p-2 bg-yellow-900/30 rounded border border-yellow-700/50">
+              <span class="font-bold text-yellow-400">⚠️ Seu modelo atual (LLaVA-Llama-3-8B):</span>
+              <p class="text-gray-300 mt-1">Funciona, mas pode truncar respostas longas. Considere modelos com contexto maior.</p>
+            </div>
+            
+            <div class="p-2 bg-purple-900/30 rounded border border-purple-700/50">
+              <span class="font-bold text-purple-400">🚀 Para GPUs potentes (24GB+):</span>
+              <ul class="text-gray-300 mt-1 space-y-1 ml-2">
+                <li>• <strong>LLaVA-NeXT-34B</strong> - Análise detalhada superior</li>
+                <li>• <strong>InternVL2-26B</strong> - Excelente para JSON estruturado</li>
+              </ul>
+            </div>
+          </div>
+          
+          <p class="text-gray-500 text-xs mt-3 italic">
+            Baixe modelos no LM Studio: Pesquise por "vision" ou "VL" na aba Discover.
+          </p>
+        </div>
       </div>
 
       <div class="text-sm text-gray-400 p-3 bg-gray-900/50 rounded-md">
         <span *ngIf="currentSettings.provider === 'gemini'">Usando a API do Google Gemini. Sujeito aos limites de taxa do plano gratuito.</span>
-        <span *ngIf="currentSettings.provider !== 'gemini'">Usando um servidor local. Certifique-se de que seu servidor (ex: LM Studio) esteja em execução com um modelo compatível carregado.</span>
+        <span *ngIf="currentSettings.provider !== 'gemini'">Usando um servidor local. Certifique-se de que seu servidor (ex: LM Studio) esteja em execução com um modelo de VISÃO carregado.</span>
       </div>
 
     </div>

@@ -22,6 +22,8 @@ function angularResourcesPlugin() {
           const templatePath = templateUrlMatch[1];
           const resolvedPath = path.resolve(path.dirname(id), templatePath);
           try {
+            // Adiciona timestamp para invalidar cache
+            const timestamp = fs.statSync(resolvedPath).mtimeMs;
             const template = fs.readFileSync(resolvedPath, 'utf-8')
               .replace(/\/\//g, '\\\\//') 
               .replace(/`/g, '\\`');
@@ -30,12 +32,22 @@ function angularResourcesPlugin() {
               /templateUrl:\s*['"`][^'"``]+['"`]/,
               `template: \`${escapedTemplate}\``
             );
+            // Log para debug
+            console.log(`[vite-angular] Template loaded: ${resolvedPath} (${timestamp})`);
           } catch (e) {
             console.warn(`Could not load template: ${resolvedPath}`);
           }
         }
       }
       return code;
+    },
+    // Força recarregamento quando templates mudam
+    handleHotUpdate({ file, server }) {
+      if (file.endsWith('.component.html')) {
+        console.log(`[vite-angular] Template changed: ${file}, triggering full reload`);
+        server.ws.send({ type: 'full-reload' });
+        return [];
+      }
     }
   };
 }
@@ -52,6 +64,13 @@ export default defineConfig(({ mode }) => {
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api\/llm/, ''),
             ws: false,
+            configure: (proxy) => {
+              // Permitir payloads grandes (imagens base64)
+              proxy.on('proxyReq', (proxyReq) => {
+                // Remover limite de tamanho
+                proxyReq.setHeader('Content-Type', 'application/json');
+              });
+            },
           },
         },
       },
@@ -67,6 +86,15 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+        }
+      },
+      optimizeDeps: {
+        include: ['@google/genai'],
+        force: true // Força reotimização das dependências
+      },
+      build: {
+        commonjsOptions: {
+          include: [/node_modules/]
         }
       }
     };

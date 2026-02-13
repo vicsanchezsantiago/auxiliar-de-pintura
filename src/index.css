@@ -2,39 +2,193 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for a better dark theme aesthetic */
+/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1f2937; /* bg-gray-800 */
+  background: #1f2937;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #4b5563; /* bg-gray-600 */
+  background: #4b5563;
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280; /* bg-gray-500 */
+  background: #6b7280;
 }
 
+/* ========== PRINT / PDF A4 ========== */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 8mm;
+  }
+
+  /* Reset geral para fundo branco */
+  html, body {
+    background-color: white !important;
+    color: #111 !important;
+    font-size: 9pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .no-print {
     display: none !important;
   }
-  body {
+
+  /* Forçar fundo branco em TODOS os elementos */
+  * {
+    box-shadow: none !important;
+  }
+
+  /* Containers */
+  div, section, header, main, article {
+    background-color: transparent !important;
+  }
+
+  /* Títulos */
+  h1, h2, h3, h4, h5, h6 {
+    color: #111 !important;
+    page-break-after: avoid;
+  }
+
+  /* Texto geral */
+  p, span, li, td, th, label, strong, em, a {
+    color: #222 !important;
+  }
+
+  /* ---- Paleta de cores (tabela) ---- */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8pt !important;
+  }
+  thead tr {
+    background-color: #e5e7eb !important;
+  }
+  th {
+    font-weight: bold !important;
+    border: 1px solid #9ca3af !important;
+    padding: 3px 5px !important;
+    text-align: left !important;
+    font-size: 7pt !important;
+    text-transform: uppercase !important;
+    color: #333 !important;
+  }
+  td {
+    border: 1px solid #d1d5db !important;
+    padding: 2px 5px !important;
+    color: #222 !important;
+  }
+  tbody tr:nth-child(even) {
+    background-color: #f9fafb !important;
+  }
+  tbody tr:nth-child(odd) {
     background-color: white !important;
-    color: black !important;
   }
-  .print-bg-white {
+
+  /* Swatches de cor na tabela — preservar cor real */
+  td div[style*="background-color"],
+  .print-keep-bg {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ---- Passos de Pintura ---- */
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Cards dos passos */
+  .bg-gray-800,
+  .bg-gray-700 {
     background-color: white !important;
+    border: 1px solid #d1d5db !important;
   }
-  .print-text-black {
-    color: black !important;
+
+  /* Header do passo com borda lateral colorida - manter a borda */
+  div[style*="border-left"] {
+    background-color: #f3f4f6 !important;
+    border-top: 1px solid #d1d5db !important;
+    border-right: 1px solid #d1d5db !important;
+    border-bottom: 1px solid #d1d5db !important;
   }
-  .print-border {
-    border: 1px solid #ccc;
+
+  /* Badges dos números dos passos - preservar cor */
+  .bg-teal-600 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Grid técnica/ferramenta/diluição */
+  .bg-gray-700.rounded {
+    background-color: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  /* Pills de tintas */
+  .bg-gray-700.rounded-full {
+    background-color: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Dicas */
+  .bg-teal-900 {
+    background-color: #f0fdfa !important;
+    border-left: 3px solid #14b8a6 !important;
+  }
+  .text-teal-200, .text-teal-300, .text-teal-400 {
+    color: #0d9488 !important;
+  }
+
+  /* Avisos */
+  .bg-yellow-900 {
+    background-color: #fefce8 !important;
+    border-left: 3px solid #eab308 !important;
+  }
+  .text-yellow-200, .text-yellow-300, .text-yellow-400 {
+    color: #a16207 !important;
+  }
+
+  /* Misturas */
+  .bg-orange-900 {
+    background-color: #fff7ed !important;
+    border: 1px solid #f97316 !important;
+  }
+
+  /* Dicas de fixação */
+  .bg-gray-800.rounded-lg {
+    background-color: #f9fafb !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  /* Esconder canvas (imagens de região) no print */
+  canvas {
+    display: none !important;
+  }
+
+  /* Separadores */
+  .border-b {
+    border-color: #d1d5db !important;
+  }
+  .border-teal-500 {
+    border-color: #14b8a6 !important;
+  }
+
+  /* Esconder seção "região da imagem" no print */
+  .lg\\:w-48 {
+    display: none !important;
+  }
+
+  /* Rounds/swatch - manter cores */
+  div[style*="background-color"].rounded,
+  div[style*="background-color"].rounded-full,
+  span[style*="background-color"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

@@ -1,4 +1,3 @@
-
 <div class="max-w-2xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
   <h2 class="text-3xl font-bold mb-6 text-center text-teal-300">Criar Novo Projeto de Pintura</h2>
   <form (ngSubmit)="generatePlan()" class="space-y-6">
@@ -43,8 +42,19 @@
       <button type="submit"
               class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 focus:ring-offset-gray-800 disabled:bg-gray-500 transition-colors"
               [disabled]="!projectName() || !projectSource() || !referenceImage()">
-        Gerar Plano de Pintura
+        📐 Definir Partes e Gerar Plano
       </button>
     </div>
   </form>
 </div>
+
+<!-- Modal de seleção de regiões (ANTES de gerar o projeto) -->
+<app-region-selector 
+  *ngIf="showRegionSelector() && referenceImage()"
+  [imageBase64]="referenceImage()!.base64"
+  [imageType]="referenceImage()!.type"
+  [partNames]="[]"
+  (regionsConfirmed)="onRegionsConfirmed($event)"
+  (cancelled)="onRegionsCancelled()"
+  (identifyParts)="onIdentifyParts()">
+</app-region-selector>

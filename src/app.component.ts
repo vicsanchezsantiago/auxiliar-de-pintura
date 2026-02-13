@@ -50,7 +50,7 @@ type View = 'home' | 'inventory' | 'newProject' | 'projectView';
         (generationStarted)="onGenerationStarted($event)"
         (generationFailed)="onGenerationFailed($event)">
       </app-new-project>
-      <app-project-view *ngSwitchCase="'projectView'" [projectPlan]="activeProject()"></app-project-view>
+      <app-project-view *ngSwitchCase="'projectView'" [projectPlan]="activeProject()" (projectUpdated)="onProjectGenerated($event)"></app-project-view>
     </div>
   </main>
 
@@ -80,17 +80,21 @@ export class AppComponent {
   }
 
   onProjectGenerated(projectPlan: ProjectPlan) {
+    console.log('[AppComponent] onProjectGenerated chamado:', projectPlan);
     this.activeProject.set(projectPlan);
     this.navigateTo('projectView');
     this.isLoading.set(false);
+    console.log('[AppComponent] isLoading setado para false, view:', this.currentView());
   }
 
   onGenerationStarted(message: string) {
+    console.log('[AppComponent] onGenerationStarted:', message);
     this.isLoading.set(true);
     this.loadingMessage.set(message);
   }
   
   onGenerationFailed(message: string = 'Falha ao gerar o plano do projeto. Por favor, verifique sua chave de API e tente novamente.') {
+    console.log('[AppComponent] onGenerationFailed:', message);
     this.isLoading.set(false);
     alert(message);
   }
