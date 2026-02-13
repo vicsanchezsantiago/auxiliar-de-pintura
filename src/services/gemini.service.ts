@@ -978,16 +978,20 @@ Retorne JSON com ${regions.length + 1} passos (um por parte + verniz final):
     {
       "stepNumber": 1,
       "partName": "EXATAMENTE o nome da parte do usuário",
-      "partDescription": "descrição detalhada",
-      "baseColor": {"name": "cor", "hex": "#RRGGBB"},
-      "paintsToUse": [{"name": "tinta exata do inventário", "brand": "marca", "hex": "#HEX", "purpose": "base"}],
+      "partDescription": "descrição detalhada de como pintar esta parte",
+      "baseColor": {"name": "cor principal", "hex": "#RRGGBB"},
+      "paintsToUse": [
+        {"name": "tinta do inventário para base", "brand": "marca", "hex": "#HEX", "purpose": "base"},
+        {"name": "tinta MAIS ESCURA para sombras", "brand": "marca", "hex": "#HEX", "purpose": "sombra"},
+        {"name": "tinta MAIS CLARA para luz", "brand": "marca", "hex": "#HEX", "purpose": "luz"}
+      ],
       "paintMix": null,
-      "technique": "basecoat",
-      "tool": "Aerógrafo ou Pincel",
-      "toolDetails": "detalhes da ferramenta",
-      "dilution": {"ratio": "2:1", "description": "descrição", "thinnerNote": "${thinnerInfo}"},
+      "technique": "layering",
+      "tool": "Pincel",
+      "toolDetails": "Pincel redondo tamanho 1",
+      "dilution": {"ratio": "2:1", "description": "2 partes tinta, 1 diluente", "thinnerNote": "${thinnerInfo}"},
       "imageRegions": [{"x": 0.0, "y": 0.0, "width": 0.5, "height": 0.5, "partName": "área"}],
-      "tips": ["dica 1", "dica 2"],
+      "tips": ["dica profissional 1", "dica profissional 2"],
       "warnings": []
     }
   ],
@@ -995,16 +999,20 @@ Retorne JSON com ${regions.length + 1} passos (um por parte + verniz final):
   "warnings": []
 }
 
-REGRAS:
+REGRAS OBRIGATÓRIAS:
 1. Gere UM passo para CADA parte listada, usando EXATAMENTE o nome da parte do usuário
-2. Use as coordenadas de imageRegions das partes do usuário quando disponíveis
-3. paintsToUse: SEMPRE array com tintas do inventário
+2. paintsToUse: SEMPRE 3 tintas por parte com purpose diferentes:
+   - "base": cor principal da parte (tom médio)
+   - "sombra": cor mais ESCURA que a base para regiões de sombra (recesses, dobras, áreas sob)
+   - "luz": cor mais CLARA que a base para realçar (highlight) arestas, pontos altos, superfícies expostas
+3. VARIE as técnicas entre os passos. Use: "basecoat" (cobertura inicial), "layering" (transições suaves), "washing" (sombras em recesses), "drybrushing" (texturas e desgaste), "edge highlight" (arestas e bordas), "glazing" (veladuras translúcidas)
 4. dilution: SEMPRE objeto {ratio, description, thinnerNote}
 5. tips/warnings: SEMPRE arrays
 6. paintMix: null quando não precisa misturar, objeto completo quando precisa
 7. Aerógrafo para áreas grandes, Pincel para detalhes
-8. Último passo = verniz protetor
-9. Tudo em português brasileiro`;
+8. Último passo = verniz protetor (pode ter apenas 1 tinta em paintsToUse)
+9. Tudo em português brasileiro
+10. Use as coordenadas de imageRegions das partes do usuário quando disponíveis`;
 
     const stepsResponse: any = await this.ai.models.generateContent({
       model,
@@ -1110,7 +1118,17 @@ REGRAS:
 
     const systemPrompt = `You are a professional miniature painting instructor. Generate a detailed painting guide as pure JSON.
 RESPOND ONLY with valid JSON. No markdown code blocks. No text before or after the JSON.
-All descriptive text in Brazilian Portuguese.`;
+All descriptive text in Brazilian Portuguese.
+
+PAINTING TECHNIQUE KNOWLEDGE:
+- basecoat: initial solid coverage coat, diluted 2:1
+- layering: smooth blending by building thin layers from dark to light
+- washing: thinned dark paint flows into recesses for shadows
+- drybrushing: almost dry brush dragged over raised areas for texture/highlights
+- edge highlight: thin bright lines on edges and ridges
+- glazing: very thin translucent paint for smooth color transitions
+
+You must use VARIED techniques across steps — do NOT use "basecoat" for every step.`;
 
     const userPrompt = `Look at this miniature reference image and create a painting guide.
 
@@ -1123,15 +1141,20 @@ ${partsDescription}
 AVAILABLE PAINTS (name | brand | hex | color description):
 ${paintsWithColorDesc}
 
-TASK: For EACH part above, look at the image and identify what color that part should be. Then find the BEST MATCHING PAINT from the inventory.
+TASK: For EACH part above, look at the image and identify what color that part should be. Then find the BEST MATCHING PAINTS from the inventory.
+
+CRITICAL: For each part, select THREE paints:
+1. "base" paint — the main mid-tone color for that part
+2. "sombra" paint — a DARKER shade for shadows (recesses, folds, undersides)
+3. "luz" paint — a LIGHTER shade for highlights (edges, raised areas, light-facing surfaces)
 
 COLOR MATCHING RULES:
-- Skin/Pele → use flesh/skin tone paints (NOT black)
+- Skin/Pele → use flesh/skin tone paints (NOT black). Shadow = darker flesh, highlight = lighter flesh/white mix
 - Hair/Cabelo → match the hair color in the image
 - Eyes/Olhos → use an appropriate eye color paint
-- Metal/Armor → use metallic or gray paints
+- Metal/Armor → use metallic or gray paints. Shadow = darker metallic, highlight = bright silver/gold
 - Fabric → match the fabric color shown in the image
-- Each part MUST have a DIFFERENT, REALISTIC hex color
+- Each part MUST have REALISTIC colors with proper shadow/highlight relationship
 
 Generate this JSON:
 {
@@ -1151,11 +1174,15 @@ Generate this JSON:
     {
       "stepNumber": 1,
       "partName": "nome exato da parte do usuário",
-      "partDescription": "instrução detalhada em português",
-      "baseColor": {"name": "nome da cor", "hex": "#RRGGBB"},
-      "paintsToUse": [{"name": "NOME EXATO", "brand": "marca", "hex": "#HEX", "purpose": "base"}],
+      "partDescription": "instrução detalhada em português: descreva como aplicar base, sombra e luz",
+      "baseColor": {"name": "nome da cor base", "hex": "#RRGGBB"},
+      "paintsToUse": [
+        {"name": "TINTA BASE do inventário", "brand": "marca", "hex": "#HEX", "purpose": "base"},
+        {"name": "TINTA ESCURA para sombra", "brand": "marca", "hex": "#HEX", "purpose": "sombra"},
+        {"name": "TINTA CLARA para luz", "brand": "marca", "hex": "#HEX", "purpose": "luz"}
+      ],
       "paintMix": null,
-      "technique": "basecoat",
+      "technique": "layering",
       "tool": "Pincel",
       "toolDetails": "Pincel redondo tamanho 1",
       "dilution": {"ratio": "2:1", "description": "2 partes tinta, 1 diluente", "thinnerNote": "${thinnerInfo}"},
@@ -1172,9 +1199,12 @@ Generate this JSON:
 RULES:
 - ONE step for EACH user part + final varnish step = ${regions.length + 1} steps total
 - partName = EXACTLY the user's part name
+- paintsToUse per step: ALWAYS 3 paints with different purpose: "base", "sombra", "luz"
+  (exception: varnish step can have 1 paint)
+- VARY technique for each step: use "basecoat" only for the first large area. Then use "layering", "washing", "drybrushing", "edge highlight", "glazing" for other parts
 - Use ONLY paints from inventory list above
 - Choose paint by closest COLOR match, not name
-- toolDetails: always specify brush type and size
+- toolDetails: always specify brush type and size (e.g. "Pincel redondo tamanho 1")
 - dilution: always an object, never a string
 - tips/warnings: always arrays
 - paintMix: null if no mixing needed`;
@@ -1818,7 +1848,7 @@ REGRAS:
           partName: step.partName || step.paintName || `Passo ${idx + 1}`,
           partDescription: step.partDescription || step.description || '',
           baseColor: step.baseColor || { name: step.partName || 'Cor base', hex: '#808080' },
-          technique: step.technique || 'basecoat',
+          technique: this.normalizeStepTechnique(step.technique, idx),
           tool: step.tool || 'Pincel',
           toolDetails: step.toolDetails ? step.toolDetails : (step.brushSize ? `Pincel tamanho ${step.brushSize}` : this.getDefaultToolDetails(step.technique)),
           imageRegions: Array.isArray(step.imageRegions) ? step.imageRegions : [],
@@ -1909,6 +1939,24 @@ REGRAS:
   /**
    * Retorna toolDetails padrão baseado na técnica
    */
+  /** Normaliza a técnica do passo — aceita valores válidos do LLM e garante variedade */
+  private normalizeStepTechnique(technique: string | undefined, stepIndex: number): string {
+    const validTechniques = ['basecoat', 'layering', 'washing', 'drybrushing', 'edge highlight', 'glazing'];
+    const t = (technique || '').toLowerCase().trim();
+    // Se o LLM retornou uma técnica válida, respeitar
+    if (validTechniques.includes(t)) return t;
+    // Mapear variantes comuns
+    if (t.includes('wash')) return 'washing';
+    if (t.includes('drybrush') || t.includes('dry brush')) return 'drybrushing';
+    if (t.includes('highlight') || t.includes('edge')) return 'edge highlight';
+    if (t.includes('layer')) return 'layering';
+    if (t.includes('glaz')) return 'glazing';
+    if (t.includes('base')) return 'basecoat';
+    // Fallback com rotação baseada no índice para garantir variedade
+    const rotation = ['basecoat', 'layering', 'washing', 'drybrushing', 'edge highlight', 'glazing'];
+    return rotation[stepIndex % rotation.length];
+  }
+
   private getDefaultToolDetails(technique: string): string {
     switch ((technique || '').toLowerCase()) {
       case 'washing': return 'Pincel redondo tamanho 2';

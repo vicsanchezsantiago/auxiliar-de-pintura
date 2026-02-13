@@ -241,4 +241,28 @@ export class ProjectViewComponent implements AfterViewInit {
         };
       });
   }
+
+  getPurposeLabel(purpose: string): string {
+    const map: Record<string, string> = {
+      'base': 'Base',
+      'sombra': 'Sombra',
+      'luz': 'Luz',
+      'highlight': 'Luz',
+      'wash': 'Wash',
+      'glaze': 'Glaze',
+    };
+    return map[purpose?.toLowerCase()] || purpose || 'Base';
+  }
+
+  getTechniqueLabel(technique: string): string {
+    const map: Record<string, string> = {
+      'basecoat': 'Basecoat (Cobertura)',
+      'layering': 'Layering (Camadas)',
+      'washing': 'Washing (Lavagem)',
+      'drybrushing': 'Drybrushing (Pincel Seco)',
+      'edge highlight': 'Edge Highlight (Realce)',
+      'glazing': 'Glazing (Veladura)',
+    };
+    return map[technique?.toLowerCase()] || technique || 'Basecoat';
+  }
 }

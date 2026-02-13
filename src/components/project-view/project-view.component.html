@@ -148,10 +148,20 @@
                 <p class="text-xs text-gray-400 uppercase tracking-wide mb-1">Tintas</p>
                 <div class="flex flex-wrap gap-1.5">
                   <div *ngFor="let paint of step.paintsToUse" 
-                       class="flex items-center gap-1.5 bg-gray-700 px-2.5 py-1 rounded-full text-sm">
-                    <div class="w-3.5 h-3.5 rounded-full border border-gray-500" [style.background-color]="paint.hex"></div>
-                    <span class="truncate max-w-[160px]">{{ paint.name }}</span>
-                    <span class="text-gray-500 text-xs">({{ paint.purpose }})</span>
+                       class="flex items-center gap-1.5 bg-gray-700 px-2.5 py-1.5 rounded-lg text-sm print-bg-white print-border">
+                    <div class="w-4 h-4 rounded-full border-2 flex-shrink-0" 
+                         [style.background-color]="paint.hex"
+                         [style.border-color]="paint.purpose === 'sombra' ? '#6b7280' : paint.purpose === 'luz' ? '#fbbf24' : '#14b8a6'"></div>
+                    <span class="text-gray-400 text-xs print-text-black" *ngIf="paint.brand">{{ paint.brand }} ·</span>
+                    <span class="truncate max-w-[160px] font-medium print-text-black">{{ paint.name }}</span>
+                    <span class="text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                          [ngClass]="{
+                            'bg-teal-900 text-teal-300': paint.purpose === 'base',
+                            'bg-gray-600 text-gray-300': paint.purpose === 'sombra',
+                            'bg-yellow-900 text-yellow-300': paint.purpose === 'luz',
+                            'bg-purple-900 text-purple-300': paint.purpose === 'wash' || paint.purpose === 'glaze',
+                            'bg-gray-700 text-gray-400': !paint.purpose || !['base','sombra','luz','wash','glaze'].includes(paint.purpose)
+                          }">{{ getPurposeLabel(paint.purpose) }}</span>
                   </div>
                 </div>
               </div>
@@ -160,7 +170,7 @@
               <div class="grid grid-cols-3 gap-2 text-sm">
                 <div class="bg-gray-700 p-2.5 rounded">
                   <p class="text-gray-500 text-xs uppercase mb-0.5">Técnica</p>
-                  <p class="font-semibold text-teal-300 print-text-black">{{ step.technique }}</p>
+                  <p class="font-semibold text-teal-300 print-text-black">{{ getTechniqueLabel(step.technique) }}</p>
                 </div>
                 <div class="bg-gray-700 p-2.5 rounded">
                   <p class="text-gray-500 text-xs uppercase mb-0.5">Ferramenta</p>
