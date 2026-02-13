@@ -102,9 +102,12 @@ export class ProjectViewComponent implements AfterViewInit {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    const padding = 0.15;
-    const padX = region.width * padding;
-    const padY = region.height * padding;
+    // Padding reduzido para respeitar a seleção do usuário (5% em vez de 15%)
+    // Também limita o padding máximo absoluto para não expandir demais regiões grandes
+    const padding = 0.05;
+    const maxPadAbs = 0.03; // máximo 3% da imagem total em padding
+    const padX = Math.min(region.width * padding, maxPadAbs);
+    const padY = Math.min(region.height * padding, maxPadAbs);
 
     const adjX = Math.max(0, region.x - padX);
     const adjY = Math.max(0, region.y - padY);
@@ -262,6 +265,7 @@ export class ProjectViewComponent implements AfterViewInit {
       'drybrushing': 'Drybrushing (Pincel Seco)',
       'edge highlight': 'Edge Highlight (Realce)',
       'glazing': 'Glazing (Veladura)',
+      'detail painting': 'Pintura de Detalhe',
     };
     return map[technique?.toLowerCase()] || technique || 'Basecoat';
   }

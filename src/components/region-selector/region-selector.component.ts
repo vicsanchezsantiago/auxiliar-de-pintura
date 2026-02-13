@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter, signal, AfterViewInit, ViewChild, ElementRef, OnInit, inject, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter, signal, AfterViewInit, ViewChild, ElementRef, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -23,14 +23,14 @@ export interface RegionItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div class="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-4">
-  <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col">
+  <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col">
 
     <!-- Header -->
     <div class="flex items-center justify-between p-4 border-b border-gray-700">
       <div>
         <h2 class="text-xl font-bold text-teal-300">📐 Definir Partes da Miniatura</h2>
         <p class="text-sm text-gray-400 mt-1">
-          Selecione áreas na imagem. Scroll ou botões para zoom. Segure espaço + arraste para mover.
+          Selecione áreas na imagem. Scroll ou botões para zoom. Botão do meio para mover.
           <span class="text-teal-400 font-semibold">{{ confirmedCount() }}/{{ items().length }}</span> definidas.
         </p>
       </div>
@@ -101,7 +101,7 @@ export interface RegionItem {
       </div>
 
       <!-- Canvas da imagem (direita) -->
-      <div class="flex-1 flex flex-col overflow-hidden bg-gray-900">
+      <div class="flex-1 flex flex-col overflow-hidden bg-gray-900 min-h-0 min-w-0">
         <!-- Zoom toolbar -->
         <div class="flex items-center justify-between px-3 py-1.5 border-b border-gray-700 bg-gray-800 flex-shrink-0">
           <div class="flex items-center gap-1.5">
@@ -115,12 +115,12 @@ export interface RegionItem {
           </div>
           <div class="flex items-center gap-2 text-xs text-gray-500">
             <span *ngIf="isPanning()" class="text-yellow-400">✋ Movendo</span>
-            <span>Scroll = zoom · Espaço+arraste = mover</span>
+            <span>Scroll = zoom · Botão do meio = mover</span>
           </div>
         </div>
 
         <!-- Canvas viewport -->
-        <div #viewport class="flex-1 overflow-hidden relative"
+        <div #viewport class="flex-1 overflow-hidden relative min-h-0"
              (wheel)="onWheel($event)"
              (mousedown)="onMouseDown($event)"
              (mousemove)="onMouseMove($event)"
@@ -202,7 +202,6 @@ export class RegionSelectorComponent implements AfterViewInit, OnInit {
   private panStartY = 0;
   private panStartPanX = 0;
   private panStartPanY = 0;
-  private spaceDown = false;
 
   private readonly COLORS = [
     '#14b8a6', '#f97316', '#a855f7', '#3b82f6', '#ef4444',
@@ -218,26 +217,6 @@ export class RegionSelectorComponent implements AfterViewInit, OnInit {
     return Math.round(this.zoomLevel() * 100);
   }
 
-  @HostListener('window:keydown', ['$event'])
-  onKeyDown(e: KeyboardEvent) {
-    if (e.code === 'Space' && !this.spaceDown) {
-      e.preventDefault();
-      this.spaceDown = true;
-      this.isPanning.set(true);
-      this.cdr.detectChanges();
-    }
-  }
-
-  @HostListener('window:keyup', ['$event'])
-  onKeyUp(e: KeyboardEvent) {
-    if (e.code === 'Space') {
-      this.spaceDown = false;
-      this.isPanning.set(false);
-      this.isDragging.set(false);
-      this.cdr.detectChanges();
-    }
-  }
-
   ngOnInit(): void {
     if (this.existingRegions && this.existingRegions.length > 0) {
       this.items.set(this.existingRegions.map(r => ({
@@ -251,31 +230,39 @@ export class RegionSelectorComponent implements AfterViewInit, OnInit {
   }
 
   ngAfterViewInit(): void {
-    this.loadImage();
+    // Aguardar layout estar pronto antes de calcular dimensões
+    setTimeout(() => this.loadImage(), 50);
   }
 
   private loadImage() {
     this.image = new Image();
     this.image.onload = () => {
-      this.setupCanvas();
-      this.centerImage();
-      this.redraw();
+      // Aguardar mais um frame para garantir que o viewport tenha dimensões
+      requestAnimationFrame(() => {
+        this.setupCanvas();
+        this.centerImage();
+        this.redraw();
+        this.cdr.detectChanges();
+      });
     };
     this.image.src = `data:${this.imageType};base64,${this.imageBase64}`;
   }
 
   private setupCanvas() {
-    if (!this.image || !this.canvasRef) return;
+    if (!this.image || !this.canvasRef || !this.viewportRef) return;
     const canvas = this.canvasRef.nativeElement;
-    // Canvas = full image resolution (no scaling — zoom is via CSS transform)
     canvas.width = this.image.naturalWidth;
     canvas.height = this.image.naturalHeight;
 
-    // Calculate base scale to fit viewport
     const vp = this.viewportRef.nativeElement;
-    const vpW = vp.clientWidth;
-    const vpH = vp.clientHeight;
+    const vpW = vp.clientWidth || 800;  // fallback se viewport não tiver dimensão
+    const vpH = vp.clientHeight || 600;
+    
+    // Calcular escala para caber na viewport, limite máximo de 1 (100%)
     this.baseScale = Math.min(vpW / canvas.width, vpH / canvas.height, 1);
+    
+    // Garantir escala mínima razoável
+    if (this.baseScale < 0.1) this.baseScale = 0.5;
   }
 
   private centerImage() {
@@ -355,16 +342,6 @@ export class RegionSelectorComponent implements AfterViewInit, OnInit {
 
     if (event.button !== 0) return;
 
-    // Pan mode: space held + left click
-    if (this.spaceDown) {
-      this.isDragging.set(true);
-      this.panStartX = event.clientX;
-      this.panStartY = event.clientY;
-      this.panStartPanX = this.panX();
-      this.panStartPanY = this.panY();
-      return;
-    }
-
     if (this.items().length === 0) return;
 
     const pos = this.mouseToImage(event);
@@ -405,7 +382,7 @@ export class RegionSelectorComponent implements AfterViewInit, OnInit {
   onMouseUp(_event: MouseEvent) {
     if (this.isDragging()) {
       this.isDragging.set(false);
-      if (!this.spaceDown) this.isPanning.set(false);
+      this.isPanning.set(false);
       return;
     }
     if (!this.isDrawing) return;

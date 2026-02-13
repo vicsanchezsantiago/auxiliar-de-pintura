@@ -754,21 +754,47 @@ Tudo em português brasileiro`;
       this.ai = new mod.GoogleGenAI({ apiKey: process.env.API_KEY as string });
     }
 
-    const imagePart = { inlineData: { mimeType: imageType, data: referenceImageBase64 } };
+    // Usar resolução menor para identificação de partes (não precisa de alta qualidade)
+    let resizedBase64 = referenceImageBase64;
+    let resizedType = imageType;
+    try {
+      const resized = await this.resizeImageForLocalLLM(referenceImageBase64, imageType, 1024);
+      resizedBase64 = resized.base64;
+      resizedType = resized.type;
+    } catch (e) {
+      console.warn('[identifyPartsGemini] Falha ao redimensionar:', e);
+    }
 
-    const prompt = `Analise esta imagem de referência de uma miniatura para pintura.
+    const imagePart = { inlineData: { mimeType: resizedType, data: resizedBase64 } };
+
+    const prompt = `Analise esta imagem de referência de uma miniatura/figura para pintura.
 Projeto: "${projectName}" (${source})
 
-TAREFA: Identifique TODAS as partes pintáveis distintas visíveis na miniatura.
-Cada parte que tiver uma cor ou material diferente DEVE ser listada separadamente.
+TAREFA: Identifique TODAS as partes INDIVIDUALMENTE PINTÁVEIS visíveis na miniatura.
+Cada parte com cor, material ou textura DIFERENTE deve ser uma entrada separada.
 
-Exemplos de partes: Pele (rosto e mãos), Cabelo, Olhos, Capa, Armadura peitoral, Calça, Botas, Cinto, Joias/gemas, Detalhes metálicos (fivelas), Arma, Base/cenário, etc.
+COMO IDENTIFICAR PARTES DISTINTAS:
+- Cada SUPERFÍCIE com cor visivelmente diferente = parte separada
+- Pele (rosto, mãos, braços expostos) → uma parte
+- Cabelo → parte separada (observe COR específica: loiro, castanho, ruivo, preto, etc.)
+- Olhos → parte separada (íris + pupila — são detalhes pequenos mas importantes)
+- Cada peça de roupa de COR DIFERENTE → parte separada (capa, tunica, calça, etc.)
+- Cada peça de armadura/metal → parte separada (peitoral, ombreira, grevas)
+- Acessórios (cinto, fivelas, joias, gemas) → parte separada
+- Armas (lâmina, cabo, proteção) → podem ser 1-3 partes dependendo de materiais
+- Base/cenário → parte separada (pedras, grama, terreno, etc.)
+
+REGRAS DE NOMENCLATURA:
+- Nomes SEMPRE em português brasileiro
+- Seja DESCRITIVO: "Capa vermelha" ao invés de apenas "Capa"
+- Inclua a cor aparente no nome quando possível
+- "Pele (rosto e mãos)" ao invés de apenas "Pele"
 
 Retorne um JSON:
 {
   "parts": [
     {
-      "partName": "nome descritivo em português",
+      "partName": "nome descritivo em português com cor aparente",
       "region": {"x": 0.0, "y": 0.0, "width": 0.5, "height": 0.3}
     }
   ]
@@ -776,11 +802,11 @@ Retorne um JSON:
 
 REGRAS:
 - Nomes SEMPRE em português brasileiro
-- Mínimo 5 partes, máximo 15
-- Separe por COR/MATERIAL diferente (ex: se a capa é vermelha e a calça é azul, são 2 partes)
+- Mínimo 6 partes, máximo 15
 - Coordenadas relativas 0.0 a 1.0 (x,y = canto superior esquerdo, width,height = tamanho)
-- Seja PRECISO nas coordenadas: botas na parte inferior, cabelo na parte superior, etc.
-- Não agrupe partes de cores muito diferentes`;
+- Seja PRECISO nas coordenadas: olhos/rosto na parte superior, botas na parte inferior, etc.
+- NÃO agrupe partes de cores/materiais visivelmente diferentes
+- Ordene de CIMA para BAIXO (cabeça → corpo → pés → base)`;
 
     const response: any = await this.ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -807,6 +833,7 @@ REGRAS:
     let resizedBase64 = referenceImageBase64;
     let resizedType = imageType;
     try {
+      // Resolução menor para identificação de partes — não precisa de alta qualidade
       const resized = await this.resizeImageForLocalLLM(referenceImageBase64, imageType, 1024);
       resizedBase64 = resized.base64;
       resizedType = resized.type;
@@ -814,29 +841,38 @@ REGRAS:
       console.warn('[identifyPartsLocal] Falha ao redimensionar:', e);
     }
 
-    const prompt = `Analise esta imagem de miniatura para pintura.
+    const prompt = `Analise esta imagem de miniatura/figura para pintura.
 Projeto: "${projectName}" (${source})
 
-Liste TODAS as partes pintáveis distintas. Cada cor ou material diferente é uma parte separada.
+Liste TODAS as partes individualmente pintáveis. Cada superfície com cor, material ou textura diferente é uma parte separada.
+
+COMO SEPARAR PARTES:
+- Pele (rosto, mãos) = uma parte
+- Cabelo = parte separada (descreva a cor aparente)
+- Olhos = parte separada (detalhe pequeno mas importante)
+- Cada peça de roupa de cor diferente = parte separada
+- Armadura/metal = parte separada
+- Acessórios (cinto, joias, fivelas) = separados
+- Base/cenário = parte separada
 
 Responda APENAS com JSON puro:
 {
   "parts": [
     {"partName": "Pele (rosto e mãos)"},
-    {"partName": "Cabelo"},
+    {"partName": "Cabelo castanho"},
     {"partName": "Olhos"},
-    {"partName": "Capa"},
-    {"partName": "Armadura"},
-    {"partName": "Calça"},
+    {"partName": "Capa vermelha"},
+    {"partName": "Armadura peitoral"},
+    {"partName": "Calça de couro"},
     {"partName": "Botas"},
     {"partName": "Base/cenário"}
   ]
 }
 
 REGRAS:
-- Nomes em português brasileiro
-- Mínimo 5 partes, máximo 12
-- Separe por cor/material diferente
+- Nomes em português brasileiro, DESCRITIVOS (inclua cor aparente)
+- Mínimo 6 partes, máximo 12
+- Ordene de cima para baixo (cabeça → pés → base)
 - JSON puro, sem markdown`;
 
     try {
@@ -902,41 +938,61 @@ REGRAS:
     // ========== FASE 1: Identificar cores para as partes definidas ==========
     console.log('[FASE 1 w/regions] Identificando cores...');
     
-    const colorsPrompt = `Analise esta imagem de referência para pintura de miniatura.
+    const colorsPrompt = `Você é um pintor profissional de miniaturas analisando uma imagem de referência.
 Projeto: "${projectName}" (${source})
 
 PARTES JÁ IDENTIFICADAS PELO USUÁRIO:
 ${partsDescription}
 
-TAREFA: Para CADA parte listada acima, identifique a cor exata que aparece na imagem.
-Adicione também quaisquer cores adicionais que perceba e que não estejam nas partes listadas.
+TAREFA PRINCIPAL: Para CADA parte listada, OBSERVE CUIDADOSAMENTE A IMAGEM e determine a cor REAL do ELEMENTO ESPECÍFICO nomeado.
 
-Tintas disponíveis no inventário (nome|marca|hex):
+⚠️ REGRAS CRÍTICAS DE ANÁLISE POR ELEMENTO:
+- "Olhos" → olhe APENAS a cor da ÍRIS na imagem (azul, verde, castanho, etc.). NÃO é a pele ao redor.
+- "Cabelo" → olhe APENAS a cor dos fios de cabelo (loiro, castanho, ruivo, preto, grisalho). NÃO é o fundo.
+- "Pele" → olhe APENAS o tom de pele (claro, médio, escuro, rosado). NÃO é a roupa.
+- "Armadura/Metal" → olhe APENAS a superfície metálica (prata, dourado, bronze, oxidado).
+- "Base/cenário" → olhe APENAS o terreno/base (pedra, grama, areia, lava, neve).
+- Cada parte = analise SOMENTE aquele elemento, ignorando tudo ao redor.
+
+INVENTÁRIO DE TINTAS DISPONÍVEIS (nome|marca|hex):
 ${paintsList}
+
+INSTRUÇÕES DE CORRESPONDÊNCIA DE COR:
+1. Determine o HEX exato da cor que você VÊ na imagem para cada elemento
+2. Compare com TODAS as tintas do inventário por proximidade de cor (hex)
+3. Se alguma tinta tem cor próxima (< 15% de distância), use-a como matchedPaint
+4. Se NENHUMA tinta é próxima o suficiente, crie uma receita de MISTURA (needsMixing=true)
+5. Tons de pele, cabelos, tecidos e materiais naturais FREQUENTEMENTE precisam de mistura
+6. NUNCA use preto ou branco como cor base de pele, cabelo, olhos ou tecidos coloridos
+7. Use cores REALISTAS — olhos são tipicamente azul/verde/castanho/cinza, não verde-limão ou rosa
 
 Retorne JSON:
 {
   "colors": [
     {
-      "colorName": "nome descritivo da cor",
-      "hex": "#RRGGBB",
-      "location": "onde aparece (use o nome da parte do usuário)",
-      "matchedPaint": {"name": "tinta do inventário", "brand": "marca", "hex": "#HEX"} ou null,
+      "colorName": "nome descritivo da cor REAL vista na imagem, em português",
+      "hex": "#RRGGBB (a cor EXATA que você vê na imagem para este elemento)",
+      "location": "nome da parte do usuário",
+      "matchedPaint": {"name": "NOME EXATO do inventário", "brand": "marca", "hex": "#HEX"} ou null,
       "needsMixing": true/false,
       "mixRecipe": {
-        "targetColor": "cor alvo",
+        "targetColor": "cor alvo descrita em português",
         "targetHex": "#RRGGBB",
-        "components": [{"paint": "tinta", "brand": "marca", "hex": "#HEX", "ratio": 2}],
-        "instructions": "Como misturar"
+        "components": [{"paint": "NOME EXATO do inventário", "brand": "marca", "hex": "#HEX", "ratio": 2}],
+        "instructions": "Como misturar em português"
       }
     }
   ]
 }
 
-REGRAS:
-- Uma cor para CADA parte do usuário, no mínimo
-- matchedPaint quando existe tinta próxima no inventário
-- mixRecipe quando needsMixing=true, usando SOMENTE tintas do inventário`;
+VALIDAÇÃO FINAL — verifique antes de responder:
+✅ Uma cor para CADA parte do usuário
+✅ O hex retornado reflete a cor REAL do elemento na imagem
+✅ matchedPaint usa NOME EXATO como cadastrado no inventário
+✅ Cores de pele NÃO são preto/branco (são tons warm/flesh)
+✅ Cores de cabelo refletem o tom REAL visto na imagem
+✅ Cores de olhos refletem a cor da ÍRIS (não da pele)
+✅ Cada parte tem cor realista e distinta (não tudo preto/branco/cinza)`;
 
     const colorsResponse: any = await this.ai.models.generateContent({
       model,
@@ -959,18 +1015,40 @@ REGRAS:
     
     const colorsList = colors.map((c: any) => `${c.colorName} (${c.hex}): ${c.location}`).join('\n');
 
-    const stepsPrompt = `Crie um guia COMPLETO e DETALHADO de pintura para miniatura.
+    const stepsPrompt = `Você é um instrutor profissional de pintura de miniaturas criando um guia completo.
 Projeto: "${projectName}" (${source})
 ${thinnerInfo}
 
 PARTES DEFINIDAS PELO USUÁRIO (gere UM PASSO para CADA, mais verniz final):
 ${partsDescription}
 
-CORES IDENTIFICADAS:
+CORES IDENTIFICADAS NA FASE ANTERIOR:
 ${colorsList}
 
-TINTAS DISPONÍVEIS (nome|marca|hex):
+TINTAS DISPONÍVEIS NO INVENTÁRIO (nome|marca|hex):
 ${paintsList}
+
+⚠️ TABELA DE TÉCNICA + FERRAMENTA POR TIPO DE PARTE:
+| Tipo de Parte | Técnica Recomendada | Ferramenta | Diluição |
+|---|---|---|---|
+| Pele | layering ou glazing | Pincel redondo tamanho 1 | 3:1 (bem diluída) |
+| Olhos | detalhes com ponta fina | Pincel de detalhe tamanho 000 | 2:1 |
+| Cabelo | layering + edge highlight | Pincel redondo tamanho 0 | 2:1 |
+| Tecido/Roupa | layering ou glazing | Pincel redondo tamanho 1 | 2:1 |
+| Metal/Armadura | basecoat + drybrushing + edge highlight | Pincel chato (dry) + fino (edge) | 2:1 |
+| Couro | layering | Pincel redondo tamanho 1 | 2:1 |
+| Gemas/Joias | glazing (translúcido) | Pincel de detalhe tamanho 00 | 3:1 |
+| Arma (metal) | basecoat + edge highlight | Pincel tamanho 0-1 | 2:1 |
+| Base/Cenário | drybrushing + washing | Pincel chato velho (dry) | 1:1 (wash ralo) |
+| Primeiro passo geral | basecoat | Pincel redondo tamanho 2 | 2:1 |
+
+⚠️ REGRAS CRÍTICAS DE COR POR TIPO:
+- PELE: tons warm (flesh/carne/bege/rosado). Shadow=tom mais escuro de flesh. Highlight=flesh+branco. NUNCA preto como base.
+- OLHOS: a cor REAL da íris (azul, verde, castanho, cinza). NUNCA verde-limão ou rosa. Pupila=preto. Highlight=ponto de branco.
+- CABELO: a cor REAL vista na imagem (castanho, loiro, ruivo, preto). Shadow=tom mais escuro. Highlight=tom mais claro.
+- METAL: tons metálicos/cinzas (prata, steel, gunmetal). Shadow=preto/cinza escuro. Highlight=prata brilhante.
+- COURO: marrons, tans. Shadow=marrom escuro. Highlight=marrom claro/tan.
+- BASE/CENÁRIO: observe a cor REAL (pedra=cinza, terra=marrom, grama=verde). Use cores variadas, NÃO apenas preto+branco.
 
 Retorne JSON com ${regions.length + 1} passos (um por parte + verniz final):
 {
@@ -978,12 +1056,12 @@ Retorne JSON com ${regions.length + 1} passos (um por parte + verniz final):
     {
       "stepNumber": 1,
       "partName": "EXATAMENTE o nome da parte do usuário",
-      "partDescription": "descrição detalhada de como pintar esta parte",
-      "baseColor": {"name": "cor principal", "hex": "#RRGGBB"},
+      "partDescription": "Descrição detalhada: (1) o que observar na referência, (2) como aplicar a base, (3) onde colocar sombras, (4) onde fazer highlights. Inclua dicas de pintura de miniatura profissional para ESTE tipo específico de parte.",
+      "baseColor": {"name": "cor principal do elemento", "hex": "#RRGGBB"},
       "paintsToUse": [
-        {"name": "tinta do inventário para base", "brand": "marca", "hex": "#HEX", "purpose": "base"},
-        {"name": "tinta MAIS ESCURA para sombras", "brand": "marca", "hex": "#HEX", "purpose": "sombra"},
-        {"name": "tinta MAIS CLARA para luz", "brand": "marca", "hex": "#HEX", "purpose": "luz"}
+        {"name": "NOME EXATO do inventário - tom médio", "brand": "marca", "hex": "#HEX", "purpose": "base"},
+        {"name": "NOME EXATO - tom ESCURO para sombras", "brand": "marca", "hex": "#HEX", "purpose": "sombra"},
+        {"name": "NOME EXATO - tom CLARO para highlights", "brand": "marca", "hex": "#HEX", "purpose": "luz"}
       ],
       "paintMix": null,
       "technique": "layering",
@@ -991,7 +1069,10 @@ Retorne JSON com ${regions.length + 1} passos (um por parte + verniz final):
       "toolDetails": "Pincel redondo tamanho 1",
       "dilution": {"ratio": "2:1", "description": "2 partes tinta, 1 diluente", "thinnerNote": "${thinnerInfo}"},
       "imageRegions": [{"x": 0.0, "y": 0.0, "width": 0.5, "height": 0.5, "partName": "área"}],
-      "tips": ["dica profissional 1", "dica profissional 2"],
+      "tips": [
+        "Dica prática específica para pintar este tipo de parte",
+        "Dica sobre técnica profissional (pesquise as melhores práticas de miniature painting para este elemento)"
+      ],
       "warnings": []
     }
   ],
@@ -1002,17 +1083,25 @@ Retorne JSON com ${regions.length + 1} passos (um por parte + verniz final):
 REGRAS OBRIGATÓRIAS:
 1. Gere UM passo para CADA parte listada, usando EXATAMENTE o nome da parte do usuário
 2. paintsToUse: SEMPRE 3 tintas por parte com purpose diferentes:
-   - "base": cor principal da parte (tom médio)
-   - "sombra": cor mais ESCURA que a base para regiões de sombra (recesses, dobras, áreas sob)
-   - "luz": cor mais CLARA que a base para realçar (highlight) arestas, pontos altos, superfícies expostas
-3. VARIE as técnicas entre os passos. Use: "basecoat" (cobertura inicial), "layering" (transições suaves), "washing" (sombras em recesses), "drybrushing" (texturas e desgaste), "edge highlight" (arestas e bordas), "glazing" (veladuras translúcidas)
-4. dilution: SEMPRE objeto {ratio, description, thinnerNote}
-5. tips/warnings: SEMPRE arrays
-6. paintMix: null quando não precisa misturar, objeto completo quando precisa
-7. Aerógrafo para áreas grandes, Pincel para detalhes
-8. Último passo = verniz protetor (pode ter apenas 1 tinta em paintsToUse)
-9. Tudo em português brasileiro
-10. Use as coordenadas de imageRegions das partes do usuário quando disponíveis`;
+   - "base": cor principal do ELEMENTO (tom médio). NOME EXATO do inventário.
+   - "sombra": cor mais ESCURA para regiões de sombra. Deve ter relação cromática com a base (mesma família de cor, mais escuro).
+   - "luz": cor mais CLARA para highlights. Deve ter relação cromática com a base (mesma família, mais claro).
+3. DIVERSIDADE DE CORES: cada parte DEVE ter cores diferentes e realistas. NÃO use preto+branco para tudo.
+   - Se a peça tem 8 partes, deve haver pelo menos 5-6 cores BASE diferentes
+   - Pele NÃO usa preto como base. Metal NÃO usa branco como base. Cabelo NÃO usa preto como sombra (a menos que o cabelo seja muito escuro).
+4. TÉCNICA E FERRAMENTA conforme a tabela acima — use a técnica CORRETA para cada tipo de parte
+5. OLHOS: NUNCA use drybrushing. Use pincel 000 e técnica de detalhe fino. A cor deve ser a da íris observada.
+6. paintMix: quando a cor exata não existe no inventário, crie uma mistura com componentes do inventário.
+7. dilution: SEMPRE objeto {ratio, description, thinnerNote}
+8. tips: SEMPRE array com 2-4 dicas PRÁTICAS E ESPECÍFICAS para pintar aquele tipo de parte.
+   - Pesquise/aplique conhecimento de técnicas profissionais de miniature painting
+   - Ex para olhos: "Pinte o branco do olho primeiro, depois a íris, depois a pupila com um ponto de preto"
+   - Ex para pele: "Aplique sombras nas cavidades dos olhos, sob o nariz e no pescoço"
+   - Ex para metal: "Drybrushing leve nas arestas para simular desgaste natural"
+9. warnings: SEMPRE array
+10. Último passo = verniz protetor (pode ter apenas 1 tinta)
+11. Tudo em português brasileiro
+12. Use coordenadas de imageRegions das partes do usuário quando disponíveis`;
 
     const stepsResponse: any = await this.ai.models.generateContent({
       model,
@@ -1039,15 +1128,22 @@ REGRAS OBRIGATÓRIAS:
       step.partName = step.partName || `Passo ${idx + 1}`;
       step.partDescription = step.partDescription || '';
       if (!step.baseColor) step.baseColor = { name: step.partName, hex: '#808080' };
+      
+      // Corrigir técnica e ferramenta baseado no nome da parte
+      step.technique = this.normalizeStepTechniqueForPart(step.technique, step.partName, idx);
+      if (!step.toolDetails || step.toolDetails === 'Pincel redondo tamanho 1') {
+        step.toolDetails = this.getToolDetailsByPartName(step.partName, step.technique);
+      }
+      step.tool = step.tool || 'Pincel';
       if (step.paintMix && (!step.paintMix.targetColor || !step.paintMix.components?.length)) step.paintMix = null;
 
-      // Aplicar regiões do usuário se o passo não tiver (suporta múltiplas)
-      if (step.imageRegions.length === 0) {
-        const userRegion = regions.find(r => r.partName.toLowerCase() === step.partName.toLowerCase());
-        if (userRegion) {
-          const allRegions = userRegion.regions && userRegion.regions.length > 0
-            ? userRegion.regions
-            : (userRegion.region ? [userRegion.region] : []);
+      // SEMPRE usar regiões do usuário quando disponíveis (prioridade sobre IA)
+      const userRegion = regions.find(r => r.partName.toLowerCase() === step.partName.toLowerCase());
+      if (userRegion) {
+        const allRegions = userRegion.regions && userRegion.regions.length > 0
+          ? userRegion.regions
+          : (userRegion.region ? [userRegion.region] : []);
+        if (allRegions.length > 0) {
           step.imageRegions = allRegions.map((reg: any) => ({ ...reg, partName: userRegion.partName }));
         }
       }
@@ -1098,7 +1194,7 @@ REGRAS OBRIGATÓRIAS:
     let resizedBase64 = referenceImageBase64;
     let resizedType = imageType;
     try {
-      const resized = await this.resizeImageForLocalLLM(referenceImageBase64, imageType, 1024);
+      const resized = await this.resizeImageForLocalLLM(referenceImageBase64, imageType, 1536);
       resizedBase64 = resized.base64;
       resizedType = resized.type;
     } catch (e) { console.warn('[generateLocalWithRegions] Falha ao redimensionar:', e); }
@@ -1116,70 +1212,116 @@ REGRAS OBRIGATÓRIAS:
       return `${p.name} | ${p.brand} | ${p.hex} | ${colorDesc}`;
     }).join('\n');
 
-    const systemPrompt = `You are a professional miniature painting instructor. Generate a detailed painting guide as pure JSON.
-RESPOND ONLY with valid JSON. No markdown code blocks. No text before or after the JSON.
+    const systemPrompt = `You are a master-level miniature painting instructor with 20+ years of experience.
+You generate detailed painting guides as pure JSON. RESPOND ONLY with valid JSON — no markdown, no code blocks, no text.
 All descriptive text in Brazilian Portuguese.
 
-PAINTING TECHNIQUE KNOWLEDGE:
-- basecoat: initial solid coverage coat, diluted 2:1
-- layering: smooth blending by building thin layers from dark to light
-- washing: thinned dark paint flows into recesses for shadows
-- drybrushing: almost dry brush dragged over raised areas for texture/highlights
-- edge highlight: thin bright lines on edges and ridges
-- glazing: very thin translucent paint for smooth color transitions
+ABSOLUTE RULES FOR COLOR ANALYSIS:
+When the user names a part, you MUST analyze ONLY that specific element in the image:
+- "Olhos" (Eyes) → the IRIS color only (blue, green, brown, hazel, gray). NOT the surrounding skin. NEVER lime green or pink.
+- "Cabelo" (Hair) → the HAIR color only (blonde, brown, red, black, gray). NOT background or skin.
+- "Pele" (Skin) → the SKIN TONE only (pale, medium, dark, rosy). Base is ALWAYS a flesh/warm tone, NEVER black or white.
+- "Armadura/Metal" → the METAL surface (silver, gold, bronze, rusty). Use metallic/gray tones.
+- "Base/Cenário" → the TERRAIN (stone=gray, dirt=brown, grass=green, sand=tan). Use appropriate earth/nature tones.
 
-You must use VARIED techniques across steps — do NOT use "basecoat" for every step.`;
+TECHNIQUE + TOOL TABLE (you MUST follow this):
+| Part Type | Technique | Tool | Notes |
+|-----------|-----------|------|-------|
+| Skin/Pele | layering or glazing | Round brush size 1 | Thin layers, warm tones |
+| Eyes/Olhos | detail painting | Detail brush size 000 | NEVER drybrushing. Tiny precise strokes |
+| Hair/Cabelo | layering + edge highlight | Round brush size 0 | Follow hair flow direction |
+| Fabric/Cloth | layering or glazing | Round brush size 1 | Smooth transitions |
+| Metal/Armor | basecoat + drybrushing + edge highlight | Flat brush (dry) + fine (edge) | Metallic paints |
+| Leather | layering | Round brush size 1 | Warm browns |
+| Gems/Jewels | glazing | Detail brush size 00 | Translucent layers |
+| Weapon blade | basecoat + edge highlight | Brush size 0-1 | Sharp edge highlights |
+| Base/Scenery | drybrushing + washing | Old flat brush | Heavy texture work |
 
-    const userPrompt = `Look at this miniature reference image and create a painting guide.
+COLOR DIVERSITY REQUIREMENT:
+- Each part MUST have a DISTINCT, REALISTIC color palette
+- A miniature with 8 parts should use AT LEAST 5-6 different base colors
+- NEVER default to just black + white for everything
+- Skin = flesh tones (warm). Hair = actual hair color. Eyes = actual iris color.
+- Shadow paint must be SAME COLOR FAMILY as base, just darker
+- Highlight paint must be SAME COLOR FAMILY as base, just lighter
+
+COLOR MIXING: When the inventory lacks a close color match (>15% distance):
+- Create a paintMix using inventory paints
+- Hair, skin, and natural materials OFTEN need mixing
+- Format: {"targetColor": "desc", "targetHex": "#HEX", "components": [{"paint": "EXACT name", "brand": "brand", "hex": "#HEX", "ratio": 2}], "instructions": "Portuguese instructions"}
+
+TIPS QUALITY:
+- Each step must have 2-4 SPECIFIC, PRACTICAL tips
+- Tips should reference professional miniature painting techniques
+- Eye tips: "Paint white of eye first, then iris color, then black pupil dot, finally white reflection dot"
+- Skin tips: "Apply shadows in eye sockets, under nose, neck creases. Highlight cheekbones, nose bridge, forehead"
+- Metal tips: "Light drybrush on edges for natural wear. Use washes in recesses for depth"
+- Each tip must be actionable, not generic`;
+
+    const userPrompt = `Look at this miniature reference image and create a detailed painting guide.
 
 Project: "${projectName}" (${source})
 Thinner available: ${thinnerInfo}
 
-MINIATURE PARTS (user-defined):
+MINIATURE PARTS (user-defined — paint these EXACTLY):
 ${partsDescription}
 
-AVAILABLE PAINTS (name | brand | hex | color description):
+AVAILABLE PAINTS IN INVENTORY (name | brand | hex | color description):
 ${paintsWithColorDesc}
 
-TASK: For EACH part above, look at the image and identify what color that part should be. Then find the BEST MATCHING PAINTS from the inventory.
+YOUR TASK:
+1. For EACH part, LOOK at the image and identify the REAL color of THE SPECIFIC NAMED ELEMENT
+   - "Olhos" → What color are the IRISES in this image? (blue? green? brown?)
+   - "Pele" → What is the skin tone? (pale? medium? dark? rosy?)
+   - "Cabelo" → What hair color do you see? (blonde? brown? red? black?)
+   - Look at EACH part and describe its ACTUAL color, not a default
 
-CRITICAL: For each part, select THREE paints:
-1. "base" paint — the main mid-tone color for that part
-2. "sombra" paint — a DARKER shade for shadows (recesses, folds, undersides)
-3. "luz" paint — a LIGHTER shade for highlights (edges, raised areas, light-facing surfaces)
+2. For EACH part, select THREE paints from inventory:
+   - "base": the closest match to the REAL color of this element (mid-tone)
+   - "sombra": a DARKER shade from the SAME color family (for shadows)
+   - "luz": a LIGHTER shade from the SAME color family (for highlights)
 
-COLOR MATCHING RULES:
-- Skin/Pele → use flesh/skin tone paints (NOT black). Shadow = darker flesh, highlight = lighter flesh/white mix
-- Hair/Cabelo → match the hair color in the image
-- Eyes/Olhos → use an appropriate eye color paint
-- Metal/Armor → use metallic or gray paints. Shadow = darker metallic, highlight = bright silver/gold
-- Fabric → match the fabric color shown in the image
-- Each part MUST have REALISTIC colors with proper shadow/highlight relationship
+3. If no inventory paint matches the real color, create a paintMix
 
-Generate this JSON:
+COLOR RULES — ENFORCE STRICTLY:
+- Pele/Skin → base MUST be a flesh/warm tone paint (NOT black, NOT pure white, NOT gray)
+- Olhos/Eyes → base MUST be the iris color you SEE (blue, green, brown etc.), NOT a random color
+- Cabelo/Hair → base MUST match the hair color visible in the image
+- Metal/Armadura → use metallic/gray paints
+- Each part should have DISTINCT colors — don't reuse the same 2 paints for everything
+- Shadow = same hue but DARKER. Highlight = same hue but LIGHTER.
+
+TECHNIQUE RULES — ENFORCE STRICTLY:
+- Olhos/Eyes → technique MUST be "detail painting", tool MUST be "Pincel de detalhe tamanho 000". NEVER drybrushing.
+- Pele/Skin → technique should be "layering" or "glazing", brush size 1
+- Metal/Armor → technique should include "drybrushing" for texture
+- Base/Scenery → technique should be "drybrushing" + "washing"
+- NEVER use drybrushing for delicate parts (eyes, gems, fine details)
+
+Generate this JSON (${regions.length + 1} steps total = one per part + final varnish):
 {
   "identifiedColors": [
     {
-      "colorName": "nome descritivo da cor em português",
-      "hex": "#RRGGBB",
+      "colorName": "nome descritivo da cor REAL em português",
+      "hex": "#RRGGBB (a cor real do elemento)",
       "location": "nome exato da parte",
-      "matchedPaint": {"name": "NOME EXATO da tinta", "brand": "marca", "hex": "#HEX da tinta"},
+      "matchedPaint": {"name": "NOME EXATO DO INVENTÁRIO", "brand": "marca", "hex": "#HEX"},
       "needsMixing": false
     }
   ],
   "paintsToUse": [
-    {"name": "NOME EXATO da tinta", "brand": "marca", "hex": "#HEX"}
+    {"name": "NOME EXATO DO INVENTÁRIO", "brand": "marca", "hex": "#HEX"}
   ],
   "steps": [
     {
       "stepNumber": 1,
       "partName": "nome exato da parte do usuário",
-      "partDescription": "instrução detalhada em português: descreva como aplicar base, sombra e luz",
-      "baseColor": {"name": "nome da cor base", "hex": "#RRGGBB"},
+      "partDescription": "Instrução detalhada em português: (1) observe a referência, (2) aplique a cor base no elemento, (3) onde colocar sombras, (4) onde fazer highlights. Dicas profissionais específicas.",
+      "baseColor": {"name": "cor real do elemento", "hex": "#RRGGBB"},
       "paintsToUse": [
-        {"name": "TINTA BASE do inventário", "brand": "marca", "hex": "#HEX", "purpose": "base"},
-        {"name": "TINTA ESCURA para sombra", "brand": "marca", "hex": "#HEX", "purpose": "sombra"},
-        {"name": "TINTA CLARA para luz", "brand": "marca", "hex": "#HEX", "purpose": "luz"}
+        {"name": "INVENTÁRIO EXATO", "brand": "marca", "hex": "#HEX", "purpose": "base"},
+        {"name": "INVENTÁRIO EXATO", "brand": "marca", "hex": "#HEX", "purpose": "sombra"},
+        {"name": "INVENTÁRIO EXATO", "brand": "marca", "hex": "#HEX", "purpose": "luz"}
       ],
       "paintMix": null,
       "technique": "layering",
@@ -1187,7 +1329,7 @@ Generate this JSON:
       "toolDetails": "Pincel redondo tamanho 1",
       "dilution": {"ratio": "2:1", "description": "2 partes tinta, 1 diluente", "thinnerNote": "${thinnerInfo}"},
       "imageRegions": [],
-      "tips": ["dica profissional em português"],
+      "tips": ["dica prática específica para este tipo de parte", "dica de técnica profissional"],
       "warnings": []
     }
   ],
@@ -1196,18 +1338,17 @@ Generate this JSON:
   "requiredMixes": []
 }
 
-RULES:
-- ONE step for EACH user part + final varnish step = ${regions.length + 1} steps total
-- partName = EXACTLY the user's part name
-- paintsToUse per step: ALWAYS 3 paints with different purpose: "base", "sombra", "luz"
-  (exception: varnish step can have 1 paint)
-- VARY technique for each step: use "basecoat" only for the first large area. Then use "layering", "washing", "drybrushing", "edge highlight", "glazing" for other parts
-- Use ONLY paints from inventory list above
-- Choose paint by closest COLOR match, not name
-- toolDetails: always specify brush type and size (e.g. "Pincel redondo tamanho 1")
-- dilution: always an object, never a string
-- tips/warnings: always arrays
-- paintMix: null if no mixing needed`;
+FINAL VALIDATION CHECKLIST:
+✅ One step for each user part + final varnish = ${regions.length + 1} steps
+✅ partName = EXACTLY the user's part name
+✅ Each step has 3 paints (base, sombra, luz) with DIFFERENT and REALISTIC colors
+✅ Paint names are EXACTLY as written in inventory list
+✅ Eyes use detail brush 000, NEVER drybrushing
+✅ Skin uses warm/flesh tone, NEVER black
+✅ At least 5-6 different base colors across all steps
+✅ Tips are specific and practical (2-4 per step)
+✅ Technique matches the part type per the technique table
+✅ dilution, tips, warnings are proper objects/arrays`;
 
     try {
       const response = await this.postToLocalLLM<LocalLLMResponse>({
@@ -1237,15 +1378,17 @@ RULES:
 
       plan = this.normalizeLocalPlan(plan, inventory, projectName, source);
 
-      // Aplicar regiões do usuário nos passos (suporta múltiplas regiões por parte)
+      // SEMPRE usar regiões do usuário (prioridade sobre qualquer coisa gerada pela IA)
       if (plan.steps) {
         for (const step of plan.steps) {
           const userRegion = regions.find(r => r.partName.toLowerCase() === (step.partName || '').toLowerCase());
-          if (userRegion && (!step.imageRegions || step.imageRegions.length === 0)) {
+          if (userRegion) {
             const allRegions = userRegion.regions && userRegion.regions.length > 0
               ? userRegion.regions
               : (userRegion.region ? [userRegion.region] : []);
-            step.imageRegions = allRegions.map((reg: any) => ({ ...reg, partName: userRegion.partName }));
+            if (allRegions.length > 0) {
+              step.imageRegions = allRegions.map((reg: any) => ({ ...reg, partName: userRegion.partName }));
+            }
           }
         }
       }
@@ -1641,11 +1784,11 @@ Retorne APENAS o hex, nada mais.`;
     console.log('[generateProjectPlanLocal] Tintas no inventário:', inventory.paints.length);
     console.log('[generateProjectPlanLocal] Imagem original base64 tamanho:', referenceImageBase64.length, 'chars (~', Math.round(referenceImageBase64.length * 0.75 / 1024), 'KB)');
     
-    // Redimensionar imagem para não sobrecarregar o LLM local (max 1024px, JPEG 80%)
+    // Redimensionar imagem para não sobrecarregar o LLM local (max 1536px, JPEG 85%)
     let resizedBase64 = referenceImageBase64;
     let resizedType = imageType;
     try {
-      const resized = await this.resizeImageForLocalLLM(referenceImageBase64, imageType, 1024);
+      const resized = await this.resizeImageForLocalLLM(referenceImageBase64, imageType, 1536);
       resizedBase64 = resized.base64;
       resizedType = resized.type;
       console.log('[generateProjectPlanLocal] Imagem redimensionada base64 tamanho:', resizedBase64.length, 'chars (~', Math.round(resizedBase64.length * 0.75 / 1024), 'KB)');
@@ -1848,9 +1991,9 @@ REGRAS:
           partName: step.partName || step.paintName || `Passo ${idx + 1}`,
           partDescription: step.partDescription || step.description || '',
           baseColor: step.baseColor || { name: step.partName || 'Cor base', hex: '#808080' },
-          technique: this.normalizeStepTechnique(step.technique, idx),
+          technique: this.normalizeStepTechniqueForPart(step.technique, step.partName || step.paintName || '', idx),
           tool: step.tool || 'Pincel',
-          toolDetails: step.toolDetails ? step.toolDetails : (step.brushSize ? `Pincel tamanho ${step.brushSize}` : this.getDefaultToolDetails(step.technique)),
+          toolDetails: step.toolDetails ? step.toolDetails : (step.brushSize ? `Pincel tamanho ${step.brushSize}` : this.getToolDetailsByPartName(step.partName || '', step.technique)),
           imageRegions: Array.isArray(step.imageRegions) ? step.imageRegions : [],
         };
         
@@ -1941,7 +2084,7 @@ REGRAS:
    */
   /** Normaliza a técnica do passo — aceita valores válidos do LLM e garante variedade */
   private normalizeStepTechnique(technique: string | undefined, stepIndex: number): string {
-    const validTechniques = ['basecoat', 'layering', 'washing', 'drybrushing', 'edge highlight', 'glazing'];
+    const validTechniques = ['basecoat', 'layering', 'washing', 'drybrushing', 'edge highlight', 'glazing', 'detail painting'];
     const t = (technique || '').toLowerCase().trim();
     // Se o LLM retornou uma técnica válida, respeitar
     if (validTechniques.includes(t)) return t;
@@ -1952,9 +2095,36 @@ REGRAS:
     if (t.includes('layer')) return 'layering';
     if (t.includes('glaz')) return 'glazing';
     if (t.includes('base')) return 'basecoat';
+    if (t.includes('detail') || t.includes('detalhe')) return 'detail painting';
     // Fallback com rotação baseada no índice para garantir variedade
     const rotation = ['basecoat', 'layering', 'washing', 'drybrushing', 'edge highlight', 'glazing'];
     return rotation[stepIndex % rotation.length];
+  }
+
+  /** Normaliza técnica levando em conta o NOME DA PARTE — impede combinações ruins */
+  private normalizeStepTechniqueForPart(technique: string | undefined, partName: string, stepIndex: number): string {
+    const name = (partName || '').toLowerCase();
+    const t = (technique || '').toLowerCase().trim();
+    
+    // REGRAS DE BLOQUEIO: certas partes NUNCA devem usar certas técnicas
+    // Olhos NUNCA usam drybrushing — são detalhes delicados
+    if ((name.includes('olho') || name.includes('eye')) && (t.includes('drybrush') || t.includes('dry brush'))) {
+      return 'detail painting';
+    }
+    // Gemas/joias NUNCA usam drybrushing
+    if ((name.includes('gema') || name.includes('joia') || name.includes('gem')) && (t.includes('drybrush'))) {
+      return 'glazing';
+    }
+    
+    // Se o LLM deu uma técnica válida e não é bloqueada, usar
+    const normalized = this.normalizeStepTechnique(technique, stepIndex);
+    
+    // Se caiu no fallback por rotação, usar a técnica baseada no nome da parte
+    if (!technique || technique.trim() === '') {
+      return this.getTechniqueByPartName(partName, stepIndex);
+    }
+    
+    return normalized;
   }
 
   private getDefaultToolDetails(technique: string): string {
@@ -1964,9 +2134,37 @@ REGRAS:
       case 'edge highlight': case 'highlight': return 'Pincel fino tamanho 0 ou 00';
       case 'layering': return 'Pincel redondo tamanho 1';
       case 'glazing': return 'Pincel macio tamanho 2';
-      case 'detalhes': case 'details': return 'Pincel de detalhe tamanho 000';
+      case 'detalhes': case 'details': case 'detail painting': return 'Pincel de detalhe tamanho 000';
       default: return 'Pincel redondo tamanho 1';
     }
+  }
+
+  /** Retorna a ferramenta mais adequada baseada no NOME DA PARTE */
+  private getToolDetailsByPartName(partName: string, technique: string): string {
+    const name = (partName || '').toLowerCase();
+    if (name.includes('olho') || name.includes('eye')) return 'Pincel de detalhe tamanho 000';
+    if (name.includes('gema') || name.includes('joia') || name.includes('gem')) return 'Pincel de detalhe tamanho 00';
+    if (name.includes('runa') || name.includes('símbolo') || name.includes('detalhe')) return 'Pincel de detalhe tamanho 00';
+    if (name.includes('cabelo') || name.includes('hair')) return 'Pincel redondo tamanho 0';
+    if (name.includes('base') || name.includes('cenário') || name.includes('terreno')) return 'Pincel chato tamanho 4 para drybrush';
+    if (name.includes('armadura') || name.includes('metal') || name.includes('armor')) return 'Pincel redondo tamanho 1 + chato para drybrush';
+    return this.getDefaultToolDetails(technique);
+  }
+
+  /** Retorna a técnica mais adequada baseada no NOME DA PARTE */
+  private getTechniqueByPartName(partName: string, stepIndex: number): string {
+    const name = (partName || '').toLowerCase();
+    if (name.includes('olho') || name.includes('eye')) return 'detail painting';
+    if (name.includes('gema') || name.includes('joia') || name.includes('gem')) return 'glazing';
+    if (name.includes('pele') || name.includes('skin') || name.includes('rosto')) return 'layering';
+    if (name.includes('cabelo') || name.includes('hair')) return 'layering';
+    if (name.includes('base') || name.includes('cenário') || name.includes('terreno')) return 'drybrushing';
+    if (name.includes('armadura') || name.includes('metal') || name.includes('armor')) return 'drybrushing';
+    if (name.includes('capa') || name.includes('manto') || name.includes('túnica') || name.includes('roupa')) return 'layering';
+    if (name.includes('verniz') || name.includes('proteção') || name.includes('selo')) return 'basecoat';
+    // Fallback com rotação
+    const rotation = ['basecoat', 'layering', 'washing', 'drybrushing', 'edge highlight', 'glazing'];
+    return rotation[stepIndex % rotation.length];
   }
 
   /**
@@ -2313,10 +2511,10 @@ REGRAS:
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(img, 0, 0, w, h);
           
-          // Converter para JPEG com qualidade 80%
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          // Converter para JPEG com qualidade 85%
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
           const resizedBase64 = dataUrl.split(',')[1];
-          console.log(`[resizeImageForLocalLLM] ${img.naturalWidth}x${img.naturalHeight} → ${w}x${h} (JPEG 80%)`);
+          console.log(`[resizeImageForLocalLLM] ${img.naturalWidth}x${img.naturalHeight} → ${w}x${h} (JPEG 85%)`);
           resolve({ base64: resizedBase64, type: 'image/jpeg' });
         } catch (e) {
           reject(e);
